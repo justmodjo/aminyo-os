@@ -494,9 +494,9 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
         </div>
       </div>
 
-      <!-- PANEL: Agents (placeholder) -->
+      <!-- PANEL: Agents -->
       <div class="tab-panel" id="panel-agents">
-        <div class="section"><h2>🤖 Agents</h2><p style="padding:20px;color:var(--dim);">Sélectionne un agent pour voir son activité.</p></div>
+        <div class="section"><h2>🤖 Agents</h2><p style="padding:20px;color:var(--dim);">Chargement...</p></div>
       </div>
 
       <!-- PANEL: Projets (placeholder) -->
@@ -525,6 +525,8 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
     // ── STATE ──────────────────────────────────────
     let leadsCache = [];
     let selectedLead = null;
+    let agentsCache = [];
+    let agentsLoaded = false;
 
     // ── UTILS ──────────────────────────────────────
     function escapeHtml(text) {
@@ -559,6 +561,10 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
       const n = Number(s);
       return n >= 80 ? '🔵 ' + n : n >= 50 ? '🟡 ' + n : n >= 20 ? '🟠 ' + n : '🔴 ' + n;
     }
+    function cleanDesc(text) {
+      if (!text) return '';
+      try { return decodeURIComponent(text); } catch(e) { return text; }
+    }
 
     // ── DRAWER ─────────────────────────────────────
     function openDrawer(title, bodyHTML) {
@@ -585,9 +591,9 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
         const panel = document.getElementById('panel-' + tab.dataset.tab);
         if (panel) panel.classList.add('active');
 
-        // Load on first click
         const name = tab.dataset.tab;
         if (name === 'leads' && !leadsCache.length) await loadLeads();
+        if (name === 'agents' && !agentsLoaded) { agentsLoaded = true; await loadAgents(); }
       });
     });
 
@@ -729,6 +735,121 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
       }
     }
 
+    // ── AGENTS ─────────────────────────────────────
+    async function loadAgents() {
+      const panel = document.getElementById('panel-agents');
+      try {
+        const res = await fetch('/api/activity?limit=1000');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const logs = await res.json();
+
+        const agentMap = new Map();
+        logs.forEach(log => {
+          const name = log.agent_id;
+          if (!name) return;
+          if (!agentMap.has(name) || new Date(log.created_at) > new Date(agentMap.get(name).created_at)) {
+            agentMap.set(name, log);
+          }
+        });
+        const agents = Array.from(agentMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+        if (!agents.length) {
+          panel.innerHTML = '<div class="section"><h2>🤖 Agents</h2><p style="padding:20px;color:var(--dim);">Aucun agent trouvé.</p></div>';
+          return;
+        }
+
+        panel.innerHTML = `
+          <div class="section">
+            <h2>🤖 Agents</h2>
+            <div style="overflow-x:auto;"><table><thead><tr>
+              <th>Agent</th><th>Dernière activité</th><th>Statut</th><th>Actions (24h)</th>
+            </tr></thead><tbody id="agents-table">
+          </tbody></table></div></div>
+        `;
+
+        const body = document.getElementById('agents-table');
+        const now = Date.now();
+        const dayAgo = now - 86400000;
+        const countByAgent = {};
+        logs.forEach(log => {
+          if (log.agent_id && new Date(log.created_at).getTime() >= dayAgo) {
+            countByAgent[log.agent_id] = (countByAgent[log.agent_id] || 0) + 1;
+          }
+        });
+
+        body.innerHTML = agents.map(([name, lastLog]) => `
+          <tr class="tr-clickable" data-agent="${escapeHtml(name)}">
+            <td><strong>${escapeHtml(name)}</strong></td>
+            <td>${timeAgo(lastLog.created_at)}</td>
+            <td>${statusBadge(lastLog.status)}</td>
+            <td>${countByAgent[name] || 0}</td>
+          </tr>
+        `).join('');
+
+        body.querySelectorAll('.tr-clickable').forEach(tr => {
+          tr.addEventListener('click', () => {
+            const agentName = tr.dataset.agent;
+            const agentLogs = logs.filter(l => l.agent_id === agentName).slice(0, 20);
+            openAgentDrawer(agentName, agentLogs);
+          });
+        });
+
+      } catch (err) {
+        panel.innerHTML = '<div class="section"><h2>🤖 Agents</h2><p style="padding:20px;color:var(--red);">Erreur : ' + escapeHtml(err.message) + '</p></div>';
+      }
+    }
+
+    function formatDetails(details) {
+      if (!details) return '<span style="color:var(--dim);">—</span>';
+      try {
+        const obj = typeof details === 'string' ? JSON.parse(details) : details;
+        if (obj && typeof obj === 'object') {
+          const items = Object.entries(obj).map(([k, v]) => {
+            const val = typeof v === 'object' ? JSON.stringify(v).substring(0, 80) : String(v).substring(0, 80);
+            return '<span style="color:var(--purple)">' + escapeHtml(k) + '</span>: ' + escapeHtml(val);
+          });
+          return items.join('<br>');
+        }
+        return escapeHtml(String(details).substring(0, 200));
+      } catch(e) {
+        return escapeHtml(String(details).substring(0, 200));
+      }
+    }
+
+    function openAgentDrawer(agentName, logs) {
+      const bodyHTML = `
+        <div class="field">
+          <div class="field-label">Agent</div>
+          <div class="field-value" style="font-size:18px;font-weight:700;">${escapeHtml(agentName)}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Derni\u00e8res actions (${logs.length})</div>
+        </div>
+        ${logs.length === 0 ? '<p style="color:var(--dim);">Aucune activit\u00e9.</p>' :
+          logs.map((log, i) => {
+            const isRunning = i === 0 && (Date.now() - new Date(log.created_at).getTime()) < 120000;
+            const dtls = log.details;
+            const dtlsHtml = dtls ? formatDetails(dtls) : '';
+            return `
+          <div style="background:var(--surface-2);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <strong>${statusBadge(log.status)}${isRunning ? ' <span class="status-dot green"></span>En cours' : ''}</strong>
+              <span style="font-size:11px;color:var(--dim);">${formatFullDate(log.created_at)}</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">${escapeHtml(log.type || '')}${log.type ? ' — ' : ''}${escapeHtml(cleanDesc(log.description || '').substring(0, 120))}</div>
+            <div style="font-size:11px;color:var(--dim);display:flex;gap:12px;flex-wrap:wrap;">
+              ${log.duration_ms != null ? '<span>\u23f1 ' + log.duration_ms + 'ms</span>' : ''}
+              ${log.result_count != null ? '<span>\ud83d\udcca ' + log.result_count + ' r\u00e9sultats</span>' : ''}
+            </div>
+            ${dtlsHtml ? '<div style="font-size:11px;color:var(--dim);margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.04);">' + dtlsHtml + '</div>' : ''}
+          </div>`;
+          }).join('')
+        }
+      `;
+
+      openDrawer('\u003f\u003f ' + agentName, bodyHTML);
+    }
+
     // ── DASHBOARD ──────────────────────────────────
     async function loadDashboard() {
       try {
@@ -766,7 +887,7 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
             <td>${escapeHtml(a.agent_id)}</td>
             <td>${escapeHtml(a.type || '')}</td>
             <td>${statusBadge(a.status)}</td>
-            <td>${escapeHtml((a.description || '').substring(0, 80))}</td>
+            <td>${escapeHtml(cleanDesc(a.description || '').substring(0, 80))}</td>
           </tr>
         `).join('');
 
@@ -780,7 +901,7 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
             <tr>
               <td>${formatDate(a.created_at)}</td>
               <td>${escapeHtml(a.agent_id)}</td>
-              <td>${escapeHtml((a.description || '').substring(0, 100))}</td>
+              <td>${escapeHtml(cleanDesc(a.description || '').substring(0, 100))}</td>
             </tr>
           `).join('');
         }
