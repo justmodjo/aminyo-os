@@ -521,11 +521,9 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
     </div>
   </div>
 
-  <script>
-    // ── STATE ──────────────────────────────────────
+  <script>// ── STATE ──────────────────────────────────────
     let leadsCache = [];
     let selectedLead = null;
-    let agentsCache = [];
     let agentsLoaded = false;
 
     // ── UTILS ──────────────────────────────────────
@@ -565,6 +563,17 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
       if (!text) return '';
       try { return decodeURIComponent(text); } catch(e) { return text; }
     }
+    function toArray(data) {
+      if (Array.isArray(data)) return data;
+      if (data && Array.isArray(data.data)) return data.data;
+      if (data && Array.isArray(data.rows)) return data.rows;
+      return [];
+    }
+    function pick(obj, keys) {
+      const r = {};
+      keys.forEach(k => { r[k] = obj[k]; });
+      return r;
+    }
 
     // ── DRAWER ─────────────────────────────────────
     function openDrawer(title, bodyHTML) {
@@ -590,12 +599,75 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
         tab.classList.add('active');
         const panel = document.getElementById('panel-' + tab.dataset.tab);
         if (panel) panel.classList.add('active');
-
         const name = tab.dataset.tab;
         if (name === 'leads' && !leadsCache.length) await loadLeads();
         if (name === 'agents' && !agentsLoaded) { agentsLoaded = true; await loadAgents(); }
       });
     });
+
+    // ── FORMAT DETAILS (shared) ────────────────────
+    function formatDetails(details) {
+      if (!details) return null;
+      try {
+        const obj = typeof details === 'string' ? JSON.parse(details) : details;
+        if (obj && typeof obj === 'object') {
+          const items = Object.entries(obj).map(([k, v]) => {
+            let val;
+            if (v === null || v === undefined) val = '—';
+            else if (typeof v === 'object') val = JSON.stringify(v).substring(0, 100);
+            else val = String(v).substring(0, 100);
+            return '<span style="color:var(--purple)">' + escapeHtml(k) + '</span>: ' + escapeHtml(val);
+          });
+          return items.join('<br>');
+        }
+        return escapeHtml(String(details).substring(0, 300));
+      } catch(e) {
+        return escapeHtml(String(details).substring(0, 300));
+      }
+    }
+
+    // ── ACTIVITY DRAWER (dashboard rows) ────────────
+    function openActivityDrawer(log) {
+      const dtlsHtml = formatDetails(log.details);
+      const bodyHTML = `
+        <div class="field">
+          <div class="field-label">Agent</div>
+          <div class="field-value" style="font-size:16px;font-weight:700;">${escapeHtml(log.agent_id || '—')}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Type</div>
+          <div class="field-value">${escapeHtml(log.type || '—')}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Statut</div>
+          <div class="field-value">${statusBadge(log.status)}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Date</div>
+          <div class="field-value">${formatFullDate(log.created_at)}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Description</div>
+          <div class="field-value" style="white-space:pre-wrap;">${escapeHtml(cleanDesc(log.description || ''))}</div>
+        </div>
+        ${log.duration_ms != null ? `
+        <div class="field">
+          <div class="field-label">Durée</div>
+          <div class="field-value">${log.duration_ms} ms</div>
+        </div>` : ''}
+        ${log.result_count != null ? `
+        <div class="field">
+          <div class="field-label">Résultats</div>
+          <div class="field-value">${log.result_count}</div>
+        </div>` : ''}
+        ${dtlsHtml ? `
+        <div class="field">
+          <div class="field-label">Détails</div>
+          <div class="field-value" style="font-size:12px;line-height:1.7;">${dtlsHtml}</div>
+        </div>` : ''}
+      `;
+      openDrawer('📋 ' + (log.agent_id || 'Activité'), bodyHTML);
+    }
 
     // ── LEADS ──────────────────────────────────────
     const STATUS_FLOW = ['à_qualifier', 'en_discussion', 'devis_envoyé', 'signé', 'perdu'];
@@ -617,12 +689,9 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
           <td>${statusBadge(l.statut || 'nouveau')}</td>
         </tr>
       `).join('');
-
-      // Click handlers
       body.querySelectorAll('.tr-clickable').forEach(tr => {
         tr.addEventListener('click', () => {
-          const id = tr.dataset.id;
-          const lead = leads.find(l => l.id == id);
+          const lead = leads.find(l => l.id == tr.dataset.id);
           if (lead) openLeadDrawer(lead);
         });
       });
@@ -632,7 +701,7 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
       try {
         const res = await fetch('/api/leads?limit=100');
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        leadsCache = await res.json();
+        leadsCache = toArray(await res.json());
         renderLeadsTable(leadsCache);
       } catch (err) {
         document.getElementById('leads-table').innerHTML =
@@ -644,7 +713,6 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
       selectedLead = lead;
       const currentIdx = STATUS_FLOW.indexOf(lead.statut);
       const nextStatuses = currentIdx >= 0 ? STATUS_FLOW.slice(currentIdx + 1) : STATUS_FLOW;
-
       const notes = lead.notes || lead.message || lead.commentaire || '';
       const bodyHTML = `
         <div class="field">
@@ -695,23 +763,16 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
           <div id="status-msg"></div>
         </div>` : '<p style="color:var(--dim);font-style:italic;margin-top:12px;">Lead finalisé (signé ou perdu).</p>'}
       `;
-
       openDrawer('📥 Lead — ' + (lead.prenom || '') + ' ' + (lead.nom || ''), bodyHTML);
-
-      // Enable button on select change
       const sel = document.getElementById('status-select');
       const btn = document.getElementById('btn-update-status');
       const msg = document.getElementById('status-msg');
       if (sel && btn) {
-        sel.addEventListener('change', () => {
-          btn.disabled = !sel.value;
-        });
+        sel.addEventListener('change', () => { btn.disabled = !sel.value; });
         btn.addEventListener('click', async () => {
           if (!sel.value || !lead.id) return;
-          btn.disabled = true;
-          btn.textContent = 'Mise à jour...';
-          msg.className = 'status-msg';
-          msg.textContent = '';
+          btn.disabled = true; btn.textContent = 'Mise à jour...';
+          msg.className = 'status-msg'; msg.textContent = '';
           try {
             const res = await fetch('/api/leads/' + lead.id, {
               method: 'PATCH',
@@ -722,14 +783,12 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
             msg.className = 'status-msg success';
             msg.textContent = '✅ Statut mis à jour : ' + sel.value.replace(/_/g, ' ');
             btn.textContent = '✅ Fait';
-            // Refresh cache
             lead.statut = sel.value;
             loadLeads();
           } catch (err) {
             msg.className = 'status-msg error';
             msg.textContent = '❌ Erreur : ' + err.message;
-            btn.disabled = false;
-            btn.textContent = 'Mettre à jour';
+            btn.disabled = false; btn.textContent = 'Mettre à jour';
           }
         });
       }
@@ -739,10 +798,17 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
     async function loadAgents() {
       const panel = document.getElementById('panel-agents');
       try {
-        const res = await fetch('/api/activity?limit=1000');
+        const res = await fetch('/api/activity?limit=2000');
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const logs = await res.json();
+        const raw = await res.json();
+        const logs = toArray(raw);
 
+        if (!logs.length) {
+          panel.innerHTML = '<div class="section"><h2>🤖 Agents</h2><p style="padding:20px;color:var(--dim);">Aucune activité trouvée.</p></div>';
+          return;
+        }
+
+        // Regrouper par agent_id, garder le plus récent
         const agentMap = new Map();
         logs.forEach(log => {
           const name = log.agent_id;
@@ -753,21 +819,7 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
         });
         const agents = Array.from(agentMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
 
-        if (!agents.length) {
-          panel.innerHTML = '<div class="section"><h2>🤖 Agents</h2><p style="padding:20px;color:var(--dim);">Aucun agent trouvé.</p></div>';
-          return;
-        }
-
-        panel.innerHTML = `
-          <div class="section">
-            <h2>🤖 Agents</h2>
-            <div style="overflow-x:auto;"><table><thead><tr>
-              <th>Agent</th><th>Dernière activité</th><th>Statut</th><th>Actions (24h)</th>
-            </tr></thead><tbody id="agents-table">
-          </tbody></table></div></div>
-        `;
-
-        const body = document.getElementById('agents-table');
+        // Compter actions 24h
         const now = Date.now();
         const dayAgo = now - 86400000;
         const countByAgent = {};
@@ -777,6 +829,16 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
           }
         });
 
+        panel.innerHTML = `
+          <div class="section">
+            <h2>🤖 Agents</h2>
+            <p style="font-size:13px;color:var(--dim);margin-bottom:12px;">${agents.length} agents · ${logs.length} activités au total</p>
+            <div style="overflow-x:auto;"><table><thead><tr>
+              <th>Agent</th><th>Dernière activité</th><th>Statut</th><th>Actions (24h)</th>
+            </tr></thead><tbody id="agents-table"></tbody></table></div></div>
+        `;
+
+        const body = document.getElementById('agents-table');
         body.innerHTML = agents.map(([name, lastLog]) => `
           <tr class="tr-clickable" data-agent="${escapeHtml(name)}">
             <td><strong>${escapeHtml(name)}</strong></td>
@@ -799,23 +861,6 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
       }
     }
 
-    function formatDetails(details) {
-      if (!details) return '<span style="color:var(--dim);">—</span>';
-      try {
-        const obj = typeof details === 'string' ? JSON.parse(details) : details;
-        if (obj && typeof obj === 'object') {
-          const items = Object.entries(obj).map(([k, v]) => {
-            const val = typeof v === 'object' ? JSON.stringify(v).substring(0, 80) : String(v).substring(0, 80);
-            return '<span style="color:var(--purple)">' + escapeHtml(k) + '</span>: ' + escapeHtml(val);
-          });
-          return items.join('<br>');
-        }
-        return escapeHtml(String(details).substring(0, 200));
-      } catch(e) {
-        return escapeHtml(String(details).substring(0, 200));
-      }
-    }
-
     function openAgentDrawer(agentName, logs) {
       const bodyHTML = `
         <div class="field">
@@ -823,13 +868,12 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
           <div class="field-value" style="font-size:18px;font-weight:700;">${escapeHtml(agentName)}</div>
         </div>
         <div class="field">
-          <div class="field-label">Derni\u00e8res actions (${logs.length})</div>
+          <div class="field-label">Dernières actions (${logs.length})</div>
         </div>
-        ${logs.length === 0 ? '<p style="color:var(--dim);">Aucune activit\u00e9.</p>' :
+        ${logs.length === 0 ? '<p style="color:var(--dim);">Aucune activité.</p>' :
           logs.map((log, i) => {
             const isRunning = i === 0 && (Date.now() - new Date(log.created_at).getTime()) < 120000;
-            const dtls = log.details;
-            const dtlsHtml = dtls ? formatDetails(dtls) : '';
+            const dtlsHtml = formatDetails(log.details);
             return `
           <div style="background:var(--surface-2);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
@@ -838,19 +882,39 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
             </div>
             <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">${escapeHtml(log.type || '')}${log.type ? ' — ' : ''}${escapeHtml(cleanDesc(log.description || '').substring(0, 120))}</div>
             <div style="font-size:11px;color:var(--dim);display:flex;gap:12px;flex-wrap:wrap;">
-              ${log.duration_ms != null ? '<span>\u23f1 ' + log.duration_ms + 'ms</span>' : ''}
-              ${log.result_count != null ? '<span>\ud83d\udcca ' + log.result_count + ' r\u00e9sultats</span>' : ''}
+              ${log.duration_ms != null ? '<span>⏱ ' + log.duration_ms + 'ms</span>' : ''}
+              ${log.result_count != null ? '<span>📊 ' + log.result_count + ' résultats</span>' : ''}
             </div>
             ${dtlsHtml ? '<div style="font-size:11px;color:var(--dim);margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.04);">' + dtlsHtml + '</div>' : ''}
-          </div>`;
-          }).join('')
+          </div>`; }).join('')
         }
       `;
-
-      openDrawer('\u003f\u003f ' + agentName, bodyHTML);
+      openDrawer('🤖 ' + agentName, bodyHTML);
     }
 
     // ── DASHBOARD ──────────────────────────────────
+    function renderActivityTable(logs) {
+      const actBody = document.getElementById('activity-table');
+      actBody.innerHTML = logs.slice(0, 15).map(a => `
+        <tr class="tr-clickable" data-activity="${a.id || a.created_at || ''}">
+          <td>${formatDate(a.created_at)}</td>
+          <td>${escapeHtml(a.agent_id)}</td>
+          <td>${escapeHtml(a.type || '')}</td>
+          <td>${statusBadge(a.status)}</td>
+          <td>${escapeHtml(cleanDesc(a.description || '').substring(0, 80))}</td>
+        </tr>
+      `).join('');
+
+      // Ajouter les listeners
+      actBody.querySelectorAll('.tr-clickable').forEach(tr => {
+        tr.addEventListener('click', () => {
+          // Trouver la bonne entrée dans logs par l'index
+          const idx = Array.from(tr.parentNode.children).indexOf(tr);
+          if (idx >= 0 && logs[idx]) openActivityDrawer(logs[idx]);
+        });
+      });
+    }
+
     async function loadDashboard() {
       try {
         const [statsRes, activityRes] = await Promise.all([
@@ -879,21 +943,13 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
           </div>
         `).join('');
 
-        // Activity table
-        const actBody = document.getElementById('activity-table');
-        actBody.innerHTML = (activityRes || []).slice(0, 15).map(a => `
-          <tr>
-            <td>${formatDate(a.created_at)}</td>
-            <td>${escapeHtml(a.agent_id)}</td>
-            <td>${escapeHtml(a.type || '')}</td>
-            <td>${statusBadge(a.status)}</td>
-            <td>${escapeHtml(cleanDesc(a.description || '').substring(0, 80))}</td>
-          </tr>
-        `).join('');
+        // Activity table — cliquable
+        const logs = toArray(activityRes);
+        renderActivityTable(logs);
 
         // Alerts table
         const alertsBody = document.getElementById('alerts-table');
-        const alerts = (activityRes || []).filter(a => a.status === 'error').slice(0, 10);
+        const alerts = logs.filter(a => a.status === 'error').slice(0, 10);
         if (alerts.length === 0) {
           alertsBody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--dim);padding:30px;">Aucune alerte 🎉</td></tr>';
         } else {
@@ -915,7 +971,6 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
 
     // ── INIT ───────────────────────────────────────
     loadDashboard();
-    setInterval(loadDashboard, 30000);
-  </script>
+    setInterval(loadDashboard, 30000);</script>
 </body>
 </html>
