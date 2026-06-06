@@ -137,7 +137,7 @@ app.get('/api/clients', requireSupabase, async (req, res) => {
 app.get('/api/payments', requireSupabase, async (req, res) => {
   try {
     const { limit } = req.query;
-    const { data } = await safeQuery('payments', { order: { field: 'date', asc: false }, limit: parseInt(limit) || 50 });
+    const { data } = await safeQuery('payments', { order: { field: 'created_at', asc: false }, limit: parseInt(limit) || 50 });
     res.json(data);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
