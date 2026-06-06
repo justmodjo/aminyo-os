@@ -465,6 +465,8 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
         <button class="tab" data-tab="finances">💰 Finances</button>
       </div>
 
+      <div id="global-search-bar"></div>
+
       <!-- PANEL: Dashboard -->
       <div class="tab-panel active" id="panel-dashboard">
         <div class="stats" id="stats-row"></div>
@@ -597,6 +599,7 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
         tab.classList.add('active');
         const panel = document.getElementById('panel-' + tab.dataset.tab);
         if (panel) panel.classList.add('active');
+        if (searchBox) searchBox.value = '';
         const name = tab.dataset.tab;
         if (name === 'leads' && !leadsCache.length) await loadLeads();
         if (name === 'agents' && !agentsLoaded) { agentsLoaded = true; await loadAgents(); }
@@ -1238,6 +1241,128 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
       openDrawer('Paiement', bodyHTML);
     }
 
+
+    // -- RECHERCHE GLOBALE ----------------------------------------------------
+    var searchBox = null;
+    var searchTimeout = null;
+
+    function setupSearch() {
+      if (document.getElementById('global-search')) return;
+      var tabsBar = document.getElementById('tabs-bar');
+      if (!tabsBar) return;
+
+      var searchDiv = document.createElement('div');
+      searchDiv.id = 'global-search-bar';
+      searchDiv.style.cssText = 'padding:10px 14px;margin:0 0 10px 0;';
+      searchDiv.innerHTML = '<input type="text" id="global-search" placeholder="Rechercher... (Ctrl+F)" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.08);background:var(--surface-2);color:var(--fg);font-size:14px;outline:none;box-sizing:border-box;">';
+      tabsBar.parentNode.insertBefore(searchDiv, tabsBar.nextSibling);
+      searchBox = document.getElementById('global-search');
+
+      searchBox.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+          applySearch(searchBox.value);
+        }, 200);
+      });
+    }
+
+    function applySearch(query) {
+      var activeTab = document.querySelector('.tab.active');
+      if (!activeTab) return;
+      var name = activeTab.dataset.tab;
+      query = query.trim().toLowerCase();
+
+      if (!query) {
+        // Restaurer la vue complete de l'onglet actif
+        switch (name) {
+          case 'leads': renderLeadsTable(leadsCache); break;
+          case 'agents': loadAgents(); break;
+          case 'projets': loadProjets(); break;
+          case 'finances': loadFinances(); break;
+        }
+        return;
+      }
+
+      switch (name) {
+        case 'leads': searchLeads(query); break;
+        case 'agents': searchAgents(query); break;
+        case 'projets': searchProjets(query); break;
+        case 'finances': searchFinances(query); break;
+      }
+    }
+
+    function searchLeads(q) {
+      var filtered = [];
+      for (var i = 0; i < leadsCache.length; i++) {
+        var l = leadsCache[i];
+        var haystack = ((l.prenom || '') + ' ' + (l.nom || '') + ' ' + (l.email || '') + ' ' + (l.entreprise || '') + ' ' + (l.statut || '') + ' ' + (l.source || '')).toLowerCase();
+        if (haystack.indexOf(q) >= 0) filtered.push(l);
+      }
+      var body = document.getElementById('leads-table');
+      if (filtered.length === 0) {
+        body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:30px;">Aucun resultat pour "' + escapeHtml(q) + '"</td></tr>';
+      } else {
+        renderLeadsTable(filtered);
+      }
+    }
+
+    function searchAgents(q) {
+      var body = document.getElementById('agents-table');
+      var rows = body.querySelectorAll('tr');
+      var found = 0;
+      for (var i = 0; i < rows.length; i++) {
+        var text = rows[i].textContent.toLowerCase();
+        if (text.indexOf(q) >= 0) {
+          rows[i].style.display = '';
+          found++;
+        } else {
+          rows[i].style.display = 'none';
+        }
+      }
+      if (found === 0) {
+        body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--dim);padding:30px;">Aucun resultat pour "' + escapeHtml(q) + '"</td></tr>';
+      }
+    }
+
+    function searchProjets(q) {
+      var body = document.getElementById('projets-table');
+      var rows = body.querySelectorAll('tr');
+      // Si une seule ligne avec colspan c'est le message "aucun projet"
+      if (rows.length === 1 && rows[0].querySelector('td[colspan]')) return;
+      var found = 0;
+      for (var i = 0; i < rows.length; i++) {
+        var text = rows[i].textContent.toLowerCase();
+        if (text.indexOf(q) >= 0) {
+          rows[i].style.display = '';
+          found++;
+        } else {
+          rows[i].style.display = 'none';
+        }
+      }
+      if (found === 0) {
+        body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:30px;">Aucun resultat pour "' + escapeHtml(q) + '"</td></tr>';
+      }
+    }
+
+    function searchFinances(q) {
+      var body = document.getElementById('finances-table');
+      var rows = body.querySelectorAll('tr');
+      if (rows.length === 1 && rows[0].querySelector('td[colspan]')) return;
+      var found = 0;
+      for (var i = 0; i < rows.length; i++) {
+        var text = rows[i].textContent.toLowerCase();
+        if (text.indexOf(q) >= 0) {
+          rows[i].style.display = '';
+          found++;
+        } else {
+          rows[i].style.display = 'none';
+        }
+      }
+      if (found === 0) {
+        body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:30px;">Aucun resultat pour "' + escapeHtml(q) + '"</td></tr>';
+      }
+    }
+
     // ── DASHBOARD ──────────────────────────────────
     function renderActivityTable(logs) {
       const actBody = document.getElementById('activity-table');
@@ -1271,6 +1396,7 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
         document.getElementById('loading').style.display = 'none';
         document.getElementById('content').style.display = 'block';
         document.getElementById('status-text').textContent = new Date().toLocaleString('fr-FR');
+        setupSearch();
 
         // Stats cards
         const statsRow = document.getElementById('stats-row');
