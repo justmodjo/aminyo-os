@@ -794,133 +794,176 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
       }
     }
 
-    // ── AGENTS ─────────────────────────────────────
+
+    // -- AGENTS -----------------------------------------------------------------
+    var AGENTS_DEF = [
+      { id: 'accueil', label: 'Accueil' },
+      { id: 'gardien', label: 'Gardien' },
+      { id: 'sentinelle', label: 'Sentinelle' },
+      { id: 'briefeur', label: 'Briefeur' },
+      { id: 'facteur', label: 'Facteur' },
+      { id: 'eclaireur', label: 'Eclaireur' },
+      { id: 'synthetiseur', label: 'Synthetiseur' },
+      { id: 'batisseur', label: 'Batisseur' },
+      { id: 'porte_parole', label: 'Porte-Parole' },
+      { id: 'comptable', label: 'Comptable' },
+      { id: 'archiviste', label: 'Archiviste' },
+      { id: 'planificateur', label: 'Planificateur' },
+      { id: 'memoire', label: 'Memoire' },
+      { id: 'prospecteur', label: 'Prospecteur' },
+      { id: 'prospecteur_chaud', label: 'Prospecteur-Chaud' },
+      { id: 'reputateur', label: 'Reputateur' },
+      { id: 'journaliste', label: 'Journaliste' },
+      { id: 'formateur', label: 'Formateur' },
+      { id: 'veilleur', label: 'Veilleur' },
+      { id: 'juriste', label: 'Juriste' },
+      { id: 'brandeur', label: 'Brandeur' },
+      { id: 'briefeur_technique', label: 'Briefeur-Technique' }
+    ];
+
+    var TYPE_TO_AGENT = {
+      sentinelle: 'sentinelle', briefeur: 'briefeur', formateur: 'formateur',
+      comptable: 'comptable', gardien: 'gardien', facteur: 'facteur',
+      prospecteur: 'prospecteur', accueil: 'accueil', batisseur: 'batisseur',
+      synthetiseur: 'synthetiseur', eclaireur: 'eclaireur',
+      rapport: 'briefeur', alerte: 'sentinelle', heal: 'gardien',
+      check: 'sentinelle', heartbeat: 'sentinelle',
+      diagnostique: 'batisseur', relance: 'facteur', lead: 'accueil',
+      formation: 'formateur', veille: 'veilleur',
+      reputation: 'reputateur', article: 'journaliste'
+    };
+
+    function agentIdFromLog(log) {
+      if (log.agent_id) {
+        var id = log.agent_id.toLowerCase().replace(/[\s_-]+/g, '_');
+        for (var i = 0; i < AGENTS_DEF.length; i++) {
+          if (AGENTS_DEF[i].id === id) return id;
+        }
+        return log.agent_id;
+      }
+      if (log.type) {
+        var key = log.type.split('.')[0].toLowerCase();
+        return TYPE_TO_AGENT[key] || null;
+      }
+      return null;
+    }
+
+    function statutAgent(lastLog) {
+      if (!lastLog) return { emoji: '\u26ab', text: 'Inactif', cls: 'inactive' };
+      var ago = Date.now() - new Date(lastLog.created_at).getTime();
+      if (ago > 86400000 * 3) return { emoji: '\u26ab', text: 'Inactif', cls: 'inactive' };
+      if (lastLog.status === 'success' || lastLog.status === 'info') return { emoji: '\ud83d\udfe2', text: 'OK', cls: 'success' };
+      if (lastLog.status === 'error') return { emoji: '\ud83d\udd34', text: 'Erreur', cls: 'error' };
+      if (lastLog.status === 'warning') return { emoji: '\ud83d\udfe1', text: 'Warning', cls: 'warning' };
+      return { emoji: '\u26ab', text: 'Inactif', cls: 'inactive' };
+    }
+
     async function loadAgents() {
-      const panel = document.getElementById('panel-agents');
+      var panel = document.getElementById('panel-agents');
       try {
-        const res = await fetch('/api/activity?limit=2000');
+        var res = await fetch('/api/activity?limit=5000');
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const raw = await res.json();
-        const logs = toArray(raw);
+        var raw = await res.json();
+        var logs = toArray(raw);
 
-        if (!logs.length) {
-          panel.innerHTML = '<div class="section"><h2>🤖 Agents</h2><p style="padding:20px;color:var(--dim);">Aucune activité trouvée.</p></div>';
-          return;
+        var agentLogsIndex = {};
+        var lastLogMap = {};
+        var countTodayMap = {};
+        var todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+
+        for (var i = 0; i < logs.length; i++) {
+          var log = logs[i];
+          var id = agentIdFromLog(log);
+          if (!id) continue;
+          if (!agentLogsIndex[id]) agentLogsIndex[id] = [];
+          if (agentLogsIndex[id].length < 20) agentLogsIndex[id].push(log);
+          if (!lastLogMap[id] || new Date(log.created_at) > new Date(lastLogMap[id].created_at)) {
+            lastLogMap[id] = log;
+          }
+          if (new Date(log.created_at).getTime() >= todayStart.getTime()) {
+            countTodayMap[id] = (countTodayMap[id] || 0) + 1;
+          }
         }
 
-        // Déduire le nom d'agent : agent_id sinon extraire depuis type (ex: 'sentinelle.alerte' → 'sentinelle')
-        function agentName(log) {
-          if (log.agent_id) return log.agent_id;
-          if (log.type) {
-            const parts = log.type.split('.');
-            const first = parts[0].toLowerCase();
-            // Mapper les types courts vers les vrais noms d'agents
-            const map = {
-              sentinelle: 'sentinelle',
-              briefeur: 'briefeur',
-              formateur: 'formateur',
-              comptable: 'comptable',
-              gardien: 'gardien',
-              facteur: 'facteur',
-              prospecteur: 'prospecteur',
-              accueil: 'accueil',
-              batisseur: 'batisseur',
-              rapport: 'briefeur',
-              alerte: 'sentinelle',
-              heal: 'gardien',
-              check: 'sentinelle',
-              heartbeat: 'sentinelle',
-            };
-            return map[first] || first;
-          }
-          return 'inconnu';
+        panel.innerHTML = '<div class="section">' +
+          '<h2>Agents Aminyo</h2>' +
+          '<p style="font-size:13px;color:var(--dim);margin-bottom:12px;">' + AGENTS_DEF.length + ' agents</p>' +
+          '<div style="overflow-x:auto;"><table><thead><tr>' +
+          '<th>Agent</th><th>Statut</th><th>Derniere activite</th><th>Aujourd hui</th>' +
+          '</tr></thead><tbody id="agents-table"></tbody></table></div></div>';
+
+        var body = document.getElementById('agents-table');
+        var rows = [];
+        for (var j = 0; j < AGENTS_DEF.length; j++) {
+          var a = AGENTS_DEF[j];
+          var lastLog = lastLogMap[a.id];
+          var st = statutAgent(lastLog);
+          var count = countTodayMap[a.id] || 0;
+          var dateHtml = lastLog ? formatFullDate(lastLog.created_at) : '<span style="color:var(--dim);">-</span>';
+          rows.push('<tr class="tr-clickable" data-agent="' + escapeHtml(a.id) + '">' +
+            '<td><strong>' + escapeHtml(a.label) + '</strong></td>' +
+            '<td><span class="agent-status ' + st.cls + '">' + st.emoji + ' ' + st.text + '</span></td>' +
+            '<td>' + dateHtml + '</td>' +
+            '<td>' + count + '</td></tr>');
         }
+        body.innerHTML = rows.join('');
 
-        // Regrouper par agent, garder le plus récent
-        const agentMap = new Map();
-        logs.forEach(log => {
-          const name = agentName(log);
-          if (!agentMap.has(name) || new Date(log.created_at) > new Date(agentMap.get(name).created_at)) {
-            agentMap.set(name, log);
-          }
-        });
-        const agents = Array.from(agentMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-
-        // Compter actions 24h
-        const now = Date.now();
-        const dayAgo = now - 86400000;
-        const countByAgent = {};
-        logs.forEach(log => {
-          const name = agentName(log);
-          if (new Date(log.created_at).getTime() >= dayAgo) {
-            countByAgent[name] = (countByAgent[name] || 0) + 1;
-          }
-        });
-
-        panel.innerHTML = `
-          <div class="section">
-            <h2>🤖 Agents</h2>
-            <p style="font-size:13px;color:var(--dim);margin-bottom:12px;">${agents.length} agents · ${logs.length} activités au total</p>
-            <div style="overflow-x:auto;"><table><thead><tr>
-              <th>Agent</th><th>Dernière activité</th><th>Statut</th><th>Actions (24h)</th>
-            </tr></thead><tbody id="agents-table"></tbody></table></div></div>
-        `;
-
-        const body = document.getElementById('agents-table');
-        body.innerHTML = agents.map(([name, lastLog]) => `
-          <tr class="tr-clickable" data-agent="${escapeHtml(name)}">
-            <td><strong>${escapeHtml(name)}</strong></td>
-            <td>${timeAgo(lastLog.created_at)}</td>
-            <td>${statusBadge(lastLog.status)}</td>
-            <td>${countByAgent[name] || 0}</td>
-          </tr>
-        `).join('');
-
-        // Fonction agentName accessible dans le scope (définie plus haut)
-        body.querySelectorAll('.tr-clickable').forEach(tr => {
-          tr.addEventListener('click', () => {
-            const agName = tr.dataset.agent;
-            const agentLogs = logs.filter(l => agentName(l) === agName).slice(0, 20);
-            openAgentDrawer(agName, agentLogs);
+        var rows2 = body.querySelectorAll('.tr-clickable');
+        for (var k = 0; k < rows2.length; k++) {
+          rows2[k].addEventListener('click', function() {
+            var id = this.dataset.agent;
+            var agentDef = null;
+            for (var x = 0; x < AGENTS_DEF.length; x++) {
+              if (AGENTS_DEF[x].id === id) { agentDef = AGENTS_DEF[x]; break; }
+            }
+            var agentLogs = agentLogsIndex[id] || [];
+            openAgentDrawer(agentDef ? agentDef.label : id, agentLogs);
           });
-        });
+        }
 
       } catch (err) {
-        panel.innerHTML = '<div class="section"><h2>🤖 Agents</h2><p style="padding:20px;color:var(--red);">Erreur : ' + escapeHtml(err.message) + '</p></div>';
+        panel.innerHTML = '<div class="section"><h2>Agents</h2><p style="padding:20px;color:var(--red);">Erreur : ' + escapeHtml(err.message) + '</p></div>';
       }
     }
 
     function openAgentDrawer(agentName, logs) {
-      const bodyHTML = `
-        <div class="field">
-          <div class="field-label">Agent</div>
-          <div class="field-value" style="font-size:18px;font-weight:700;">${escapeHtml(agentName)}</div>
-        </div>
-        <div class="field">
-          <div class="field-label">Dernières actions (${logs.length})</div>
-        </div>
-        ${logs.length === 0 ? '<p style="color:var(--dim);">Aucune activité.</p>' :
-          logs.map((log, i) => {
-            const isRunning = i === 0 && (Date.now() - new Date(log.created_at).getTime()) < 120000;
-            const dtlsHtml = formatDetails(log.details);
-            return `
-          <div style="background:var(--surface-2);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-              <strong>${statusBadge(log.status)}${isRunning ? ' <span class="status-dot green"></span>En cours' : ''}</strong>
-              <span style="font-size:11px;color:var(--dim);">${formatFullDate(log.created_at)}</span>
-            </div>
-            <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">${escapeHtml(log.type || '')}${log.type ? ' — ' : ''}${escapeHtml(cleanDesc(log.description || '').substring(0, 120))}</div>
-            <div style="font-size:11px;color:var(--dim);display:flex;gap:12px;flex-wrap:wrap;">
-              ${log.duration_ms != null ? '<span>⏱ ' + log.duration_ms + 'ms</span>' : ''}
-              ${log.result_count != null ? '<span>📊 ' + log.result_count + ' résultats</span>' : ''}
-            </div>
-            ${dtlsHtml ? '<div style="font-size:11px;color:var(--dim);margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.04);">' + dtlsHtml + '</div>' : ''}
-          </div>`; }).join('')
+      var cardHtml = '';
+      if (logs.length === 0) {
+        cardHtml = '<p style="color:var(--dim);">Aucune activite.</p>';
+      } else {
+        var cards = [];
+        for (var i = 0; i < logs.length; i++) {
+          var log = logs[i];
+          var dtlsHtml = formatDetails(log.details);
+          var durHtml = log.duration_ms != null ? '<span>' + log.duration_ms + 'ms</span>' : '';
+          var resHtml = log.result_count != null ? '<span>' + log.result_count + ' resultats</span>' : '';
+          var descHtml = log.description ? ' - ' + escapeHtml(cleanDesc(log.description)) : '';
+          var dtlsExtra = '';
+          if (dtlsHtml) {
+            dtlsExtra = '<div style="font-size:11px;color:var(--dim);margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.04);">' + dtlsHtml + '</div>';
+          }
+          cards.push(
+            '<div style="background:var(--surface-2);border-radius:10px;padding:12px 14px;margin-bottom:8px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+            '<strong>' + statusBadge(log.status) + '</strong>' +
+            '<span style="font-size:11px;color:var(--dim);">' + formatFullDate(log.created_at) + '</span></div>' +
+            '<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">' +
+            '<strong>' + escapeHtml(log.type || '') + '</strong>' + descHtml + '</div>' +
+            '<div style="font-size:11px;color:var(--dim);display:flex;gap:12px;flex-wrap:wrap;">' +
+            durHtml + ' ' + resHtml + '</div>' +
+            dtlsExtra + '</div>'
+          );
         }
-      `;
-      openDrawer('🤖 ' + agentName, bodyHTML);
+        cardHtml = cards.join('');
+      }
+      var bodyHTML =
+        '<div class="field"><div class="field-label">Agent</div>' +
+        '<div class="field-value" style="font-size:18px;font-weight:700;">' + escapeHtml(agentName) + '</div></div>' +
+        '<div class="field"><div class="field-label">Dernieres actions (' + logs.length + ')</div></div>' +
+        cardHtml;
+      openDrawer('' + agentName, bodyHTML);
     }
-
     // ── DASHBOARD ──────────────────────────────────
     function renderActivityTable(logs) {
       const actBody = document.getElementById('activity-table');
