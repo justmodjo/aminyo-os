@@ -501,7 +501,6 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
 
       <!-- PANEL: Projets (placeholder) -->
       <div class="tab-panel" id="panel-projets">
-        <div class="section"><h2>📦 Projets</h2><p style="padding:20px;color:var(--dim);">Projets — bientôt disponible.</p></div>
       </div>
 
       <!-- PANEL: Finances (placeholder) -->
@@ -602,6 +601,7 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
         const name = tab.dataset.tab;
         if (name === 'leads' && !leadsCache.length) await loadLeads();
         if (name === 'agents' && !agentsLoaded) { agentsLoaded = true; await loadAgents(); }
+        if (name === 'projets') await loadProjets();
       });
     });
 
@@ -964,6 +964,151 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
         cardHtml;
       openDrawer('' + agentName, bodyHTML);
     }
+    // -- PROJETS ---------------------------------------------------------------
+    async function loadProjets() {
+      var panel = document.getElementById('panel-projets');
+      try {
+        var [projRes, payRes, cliRes] = await Promise.all([
+          fetch('/api/projects?limit=100'),
+          fetch('/api/payments?limit=200'),
+          fetch('/api/clients?limit=100')
+        ]);
+        var projects = toArray(await projRes.json());
+        var payments = toArray(await payRes.json());
+        var clients = toArray(await cliRes.json());
+
+        // Index clients par id
+        var clientMap = {};
+        for (var i = 0; i < clients.length; i++) {
+          var c = clients[i];
+          clientMap[c.id] = c;
+        }
+
+        // Index paiements par projet
+        var payByProject = {};
+        for (var i = 0; i < payments.length; i++) {
+          var p = payments[i];
+          var pid = p.project_id || p.projet_id;
+          if (!pid) continue;
+          if (!payByProject[pid]) payByProject[pid] = [];
+          payByProject[pid].push(p);
+        }
+
+        function soldeRestant(proj) {
+          var total = parseFloat(proj.montant_total || proj.montant || 0);
+          var paye = parseFloat(proj.acompte || proj.acompte_paye || 0);
+          return total - paye;
+        }
+
+        panel.innerHTML = '<div class="section">' +
+          '<h2>Projets</h2>' +
+          '<p style="font-size:13px;color:var(--dim);margin-bottom:12px;">' + projects.length + ' projet(s)</p>' +
+          '<div style="overflow-x:auto;"><table><thead><tr>' +
+          '<th>Projet</th><th>Client</th><th>Statut</th><th>Montant</th><th>Acompte</th><th>Solde</th><th>Livraison prevue</th>' +
+          '</tr></thead><tbody id="projets-table"></tbody></table></div></div>';
+
+        var body = document.getElementById('projets-table');
+        if (projects.length === 0) {
+          body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:30px;">Aucun projet pour le moment.</td></tr>';
+          return;
+        }
+
+        var rows = [];
+        for (var i = 0; i < projects.length; i++) {
+          var p = projects[i];
+          var client = clientMap[p.client_id] || null;
+          var clientName = client ? (client.prenom || client.nom ? (client.prenom || '') + ' ' + (client.nom || '') : client.email || client.name || 'Client #' + p.client_id) : ('Client #' + p.client_id);
+          var total = parseFloat(p.montant_total || p.montant || 0);
+          var paye = parseFloat(p.acompte || p.acompte_paye || 0);
+          var reste = total - paye;
+          var deliverBy = p.date_livraison || p.livraison_prevue || p.deadline || '';
+          var statusClass = 'info';
+          var statusText = p.statut || p.status || 'brouillon';
+          if (statusText === 'termine' || statusText === 'livre' || statusText === 'signe') statusClass = 'success';
+          else if (statusText === 'en_retard' || statusText === 'annule') statusClass = 'error';
+          else if (statusText === 'en_cours' || statusText === 'actif') statusClass = 'warning';
+          rows.push('<tr class="tr-clickable" data-project-id="' + p.id + '">' +
+            '<td><strong>' + escapeHtml(p.name || p.nom || p.titre || 'Projet #' + p.id) + '</strong></td>' +
+            '<td>' + escapeHtml(clientName) + '</td>' +
+            '<td><span class="badge ' + statusClass + '">' + escapeHtml(statusText.replace(/_/g, ' ')) + '</span></td>' +
+            '<td>' + total.toLocaleString('fr-FR') + ' €</td>' +
+            '<td>' + paye.toLocaleString('fr-FR') + ' €</td>' +
+            '<td><strong>' + reste.toLocaleString('fr-FR') + ' €</strong></td>' +
+            '<td>' + (deliverBy ? formatFullDate(deliverBy) : '-') + '</td></tr>');
+        }
+        body.innerHTML = rows.join('');
+
+        // Clic sur projet -> drawer
+        body.querySelectorAll('.tr-clickable').forEach(function(tr) {
+          tr.addEventListener('click', function() {
+            var pid = this.dataset.projectId;
+            for (var i = 0; i < projects.length; i++) {
+              if (projects[i].id == pid) {
+                openProjetDrawer(projects[i], payByProject[pid] || [], clientMap);
+                break;
+              }
+            }
+          });
+        });
+
+      } catch (err) {
+        panel.innerHTML = '<div class="section"><h2>Projets</h2><p style="padding:20px;color:var(--red);">Erreur : ' + escapeHtml(err.message) + '</p></div>';
+      }
+    }
+
+    function openProjetDrawer(proj, paiements, clientMap) {
+      var client = clientMap[proj.client_id] || null;
+      var clientName = client ? (client.prenom || client.nom ? (client.prenom || '') + ' ' + (client.nom || '') : client.email || client.name || 'Client #' + proj.client_id) : ('Client #' + proj.client_id);
+      var total = parseFloat(proj.montant_total || proj.montant || 0);
+      var paye = parseFloat(proj.acompte || proj.acompte_paye || 0);
+      var reste = total - paye;
+      var statusText = proj.statut || proj.status || 'brouillon';
+
+      // Paiements associes
+      var payHtml = '';
+      if (paiements.length === 0) {
+        payHtml = '<p style="color:var(--dim);">Aucun paiement enregistre.</p>';
+      } else {
+        var items = [];
+        for (var i = 0; i < paiements.length; i++) {
+          var pmt = paiements[i];
+          items.push(
+            '<div style="background:var(--surface-2);border-radius:8px;padding:10px 12px;margin-bottom:6px;">' +
+            '<div style="display:flex;justify-content:space-between;">' +
+            '<span><strong>' + (pmt.libelle || pmt.description || pmt.type || 'Paiement') + '</strong></span>' +
+            '<span style="font-weight:700;">' + parseFloat(pmt.montant || 0).toLocaleString('fr-FR') + ' €</span></div>' +
+            '<div style="font-size:12px;color:var(--dim);display:flex;justify-content:space-between;margin-top:4px;">' +
+            '<span>' + formatFullDate(pmt.created_at || pmt.date_paiement) + '</span>' +
+            '<span>' + (pmt.methode || pmt.moyen || '') + '</span></div></div>'
+          );
+        }
+        payHtml = items.join('');
+      }
+
+      var bodyHTML =
+        '<div class="field"><div class="field-label">Projet</div>' +
+        '<div class="field-value" style="font-size:18px;font-weight:700;">' + escapeHtml(proj.name || proj.nom || proj.titre || 'Projet #' + proj.id) + '</div></div>' +
+        '<div class="field"><div class="field-label">Client</div>' +
+        '<div class="field-value">' + escapeHtml(clientName) + '</div></div>' +
+        '<div class="field"><div class="field-label">Statut</div>' +
+        '<div class="field-value"><span class="badge ' + (statusText === 'termine' || statusText === 'livre' ? 'success' : statusText === 'en_cours' || statusText === 'actif' ? 'warning' : 'info') + '">' + escapeHtml(statusText.replace(/_/g, ' ')) + '</span></div></div>' +
+        '<div class="field"><div class="field-label">Date de debut</div>' +
+        '<div class="field-value">' + (proj.date_debut || proj.created_at ? formatFullDate(proj.date_debut || proj.created_at) : '-') + '</div></div>' +
+        '<div class="field"><div class="field-label">Livraison prevue</div>' +
+        '<div class="field-value">' + (proj.date_livraison || proj.livraison_prevue || proj.deadline ? formatFullDate(proj.date_livraison || proj.livraison_prevue || proj.deadline) : '-') + '</div></div>' +
+        '<div class="field"><div class="field-label">Montant total</div>' +
+        '<div class="field-value">' + total.toLocaleString('fr-FR') + ' &euro;</div></div>' +
+        '<div class="field"><div class="field-label">Acompte paye</div>' +
+        '<div class="field-value">' + paye.toLocaleString('fr-FR') + ' &euro;</div></div>' +
+        '<div class="field"><div class="field-label">Solde restant</div>' +
+        '<div class="field-value" style="font-weight:700;font-size:16px;' + (reste > 0 ? 'color:var(--red);' : 'color:var(--green);') + '">' + reste.toLocaleString('fr-FR') + ' &euro;</div></div>' +
+        '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.06);margin:12px 0;">' +
+        '<div class="field"><div class="field-label">Paiements (' + paiements.length + ')</div></div>' +
+        payHtml;
+
+      openDrawer('Projet', bodyHTML);
+    }
+
     // ── DASHBOARD ──────────────────────────────────
     function renderActivityTable(logs) {
       const actBody = document.getElementById('activity-table');
