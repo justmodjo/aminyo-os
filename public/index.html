@@ -505,7 +505,6 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
 
       <!-- PANEL: Finances (placeholder) -->
       <div class="tab-panel" id="panel-finances">
-        <div class="section"><h2>💰 Finances</h2><p style="padding:20px;color:var(--dim);">Finances — bientôt disponible.</p></div>
       </div>
 
       <!-- DRAWER Leads -->
@@ -602,6 +601,7 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
         if (name === 'leads' && !leadsCache.length) await loadLeads();
         if (name === 'agents' && !agentsLoaded) { agentsLoaded = true; await loadAgents(); }
         if (name === 'projets') await loadProjets();
+        if (name === 'finances') await loadFinances();
       });
     });
 
@@ -1107,6 +1107,135 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
         payHtml;
 
       openDrawer('Projet', bodyHTML);
+    }
+
+
+    // -- FINANCES -------------------------------------------------------------
+    async function loadFinances() {
+      var panel = document.getElementById('panel-finances');
+      try {
+        var res = await fetch('/api/payments?limit=500');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        var payments = toArray(await res.json());
+
+        // Stats
+        var now = new Date();
+        var monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        var totalMonth = 0;
+        var totalAttente = 0;
+        var totalEncaiss = 0;
+
+        for (var i = 0; i < payments.length; i++) {
+          var p = payments[i];
+          var mt = parseFloat(p.montant || p.amount || 0);
+          var d = p.date || p.created_at || p.date_paiement;
+          var st = (p.statut || p.status || '').toLowerCase();
+
+          if (st === 'paye' || st === 'recu' || st === 'completed') {
+            totalEncaiss += mt;
+            if (d && new Date(d) >= monthStart) totalMonth += mt;
+          } else {
+            totalAttente += mt;
+          }
+        }
+
+        panel.innerHTML =
+          '<div class="section"><h2>Finances</h2>' +
+          '<p style="font-size:13px;color:var(--dim);margin-bottom:12px;">' + payments.length + ' transaction(s)</p>' +
+          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;" id="finances-cards">' +
+          '  <div class="finance-card"><div class="fc-label">CA ce mois</div>' +
+          '    <div class="fc-value green">' + totalMonth.toLocaleString('fr-FR') + ' &euro;</div></div>' +
+          '  <div class="finance-card"><div class="fc-label">En attente</div>' +
+          '    <div class="fc-value orange">' + totalAttente.toLocaleString('fr-FR') + ' &euro;</div></div>' +
+          '  <div class="finance-card"><div class="fc-label">Total encaisse</div>' +
+          '    <div class="fc-value purple">' + totalEncaiss.toLocaleString('fr-FR') + ' &euro;</div></div>' +
+          '</div>' +
+          '<div style="overflow-x:auto;"><table><thead><tr>' +
+          '<th>Date</th><th>Client</th><th>Description</th><th>Type</th><th>Montant</th><th>Statut</th>' +
+          '</tr></thead><tbody id="finances-table"></tbody></table></div></div>';
+
+        var body = document.getElementById('finances-table');
+        if (payments.length === 0) {
+          body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:30px;">Aucune transaction.</td></tr>';
+          return;
+        }
+
+        var rows = [];
+        for (var i = 0; i < payments.length; i++) {
+          var p = payments[i];
+          var mt = parseFloat(p.montant || p.amount || 0);
+          var st = (p.statut || p.status || '').toLowerCase();
+          var tp = (p.type || p.categorie || '').toLowerCase();
+          var typeLabel = '';
+          if (tp === 'acompte' || tp === 'deposit') typeLabel = 'Acompte';
+          else if (tp === 'solde' || tp === 'balance') typeLabel = 'Solde';
+          else if (tp === 'mensualite' || tp === 'monthly') typeLabel = 'Mensualite';
+          else typeLabel = p.type || p.categorie || '-';
+
+          var stClass = 'info';
+          if (st === 'paye' || st === 'recu' || st === 'completed') stClass = 'success';
+          else if (st === 'en_attente' || st === 'pending') stClass = 'warning';
+          else if (st === 'annule' || st === 'refuse') stClass = 'error';
+
+          var d = p.date || p.created_at || p.date_paiement;
+
+          rows.push('<tr class="tr-clickable" data-pay-id="' + p.id + '">' +
+            '<td>' + (d ? formatFullDate(d) : '-') + '</td>' +
+            '<td>' + escapeHtml(p.client || p.client_name || p.nom_client || p.email || '-') + '</td>' +
+            '<td>' + escapeHtml(p.libelle || p.description || p.reference || '-') + '</td>' +
+            '<td>' + escapeHtml(typeLabel) + '</td>' +
+            '<td><strong>' + mt.toLocaleString('fr-FR') + ' &euro;</strong></td>' +
+            '<td><span class="badge ' + stClass + '">' + escapeHtml((p.statut || p.status || '').replace(/_/g, ' ')) + '</span></td></tr>');
+        }
+        body.innerHTML = rows.join('');
+
+        // Clic sur transaction -> drawer
+        body.querySelectorAll('.tr-clickable').forEach(function(tr) {
+          tr.addEventListener('click', function() {
+            var pid = this.dataset.payId;
+            for (var i = 0; i < payments.length; i++) {
+              if (payments[i].id == pid) {
+                openPaymentDrawer(payments[i]);
+                break;
+              }
+            }
+          });
+        });
+
+      } catch (err) {
+        panel.innerHTML = '<div class="section"><h2>Finances</h2><p style="padding:20px;color:var(--red);">Erreur : ' + escapeHtml(err.message) + '</p></div>';
+      }
+    }
+
+    function openPaymentDrawer(p) {
+      var mt = parseFloat(p.montant || p.amount || 0);
+      var st = (p.statut || p.status || '').toLowerCase();
+      var d = p.date || p.created_at || p.date_paiement;
+      var stClass = 'info';
+      if (st === 'paye' || st === 'recu' || st === 'completed') stClass = 'success';
+      else if (st === 'en_attente' || st === 'pending') stClass = 'warning';
+      else if (st === 'annule' || st === 'refuse') stClass = 'error';
+
+      var bodyHTML =
+        '<div class="field"><div class="field-label">Client</div>' +
+        '<div class="field-value" style="font-size:16px;font-weight:700;">' + escapeHtml(p.client || p.client_name || p.nom_client || p.email || '-') + '</div></div>' +
+        '<div class="field"><div class="field-label">Projet</div>' +
+        '<div class="field-value">' + escapeHtml(p.project_name || p.projet || p.libelle || '-') + '</div></div>' +
+        '<div class="field"><div class="field-label">Montant</div>' +
+        '<div class="field-value" style="font-size:18px;font-weight:700;">' + mt.toLocaleString('fr-FR') + ' &euro;</div></div>' +
+        '<div class="field"><div class="field-label">Type</div>' +
+        '<div class="field-value">' + escapeHtml(p.type || p.categorie || '-') + '</div></div>' +
+        '<div class="field"><div class="field-label">Statut</div>' +
+        '<div class="field-value"><span class="badge ' + stClass + '">' + escapeHtml((p.statut || p.status || '').replace(/_/g, ' ')) + '</span></div></div>' +
+        '<div class="field"><div class="field-label">Date</div>' +
+        '<div class="field-value">' + (d ? formatFullDate(d) : '-') + '</div></div>' +
+        '<div class="field"><div class="field-label">Reference</div>' +
+        '<div class="field-value">' + escapeHtml(p.reference || p.numero_facture || p.ref_paiement || '-') + '</div></div>' +
+        '<div class="field"><div class="field-label">Mode de paiement</div>' +
+        '<div class="field-value">' + escapeHtml(p.methode || p.moyen || p.mode_paiement || p.stripe_payment_method || '-') + '</div></div>' +
+        (p.notes || p.commentaire ? '<div class="field"><div class="field-label">Notes</div><div class="field-value" style="white-space:pre-wrap;">' + escapeHtml(p.notes || p.commentaire) + '</div></div>' : '');
+
+      openDrawer('Paiement', bodyHTML);
     }
 
     // ── DASHBOARD ──────────────────────────────────
