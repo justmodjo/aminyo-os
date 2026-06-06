@@ -3,18 +3,171 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aminyo OS API</title>
+  <title>Aminyo OS — Dashboard</title>
   <style>
-    body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
-    h1 { color: #333; }
-    .status { padding: 10px; border-radius: 8px; background: #e8f5e9; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    header { padding: 20px 0; border-bottom: 1px solid #2a2a3e; margin-bottom: 24px; }
+    header h1 { font-size: 24px; color: #fff; }
+    header h1 span { color: #7c5cfc; }
+    header p { color: #888; font-size: 14px; margin-top: 4px; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .card { background: #1a1a2e; border-radius: 12px; padding: 20px; border: 1px solid #2a2a3e; }
+    .card h3 { font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .card .value { font-size: 32px; font-weight: 700; color: #fff; }
+    .card .value.green { color: #4ade80; }
+    .card .value.red { color: #f87171; }
+    .card .value.blue { color: #60a5fa; }
+    .card .value.purple { color: #a78bfa; }
+    .section { margin-bottom: 24px; }
+    .section h2 { font-size: 16px; color: #fff; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 10px 12px; font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #1e1e32; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .badge.success { background: #166534; color: #4ade80; }
+    .badge.error { background: #7f1d1d; color: #fca5a5; }
+    .badge.warning { background: #713f12; color: #fcd34d; }
+    .badge.info { background: #1e3a5f; color: #93c5fd; }
+    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    .status-dot.green { background: #4ade80; }
+    .status-dot.red { background: #f87171; }
+    .status-dot.yellow { background: #facc15; }
+    #loading { text-align: center; padding: 100px 20px; color: #888; }
+    .error-msg { background: #7f1d1d; color: #fca5a5; padding: 12px; border-radius: 8px; margin-bottom: 16px; }
+    @media (max-width: 600px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+      .card .value { font-size: 24px; }
+    }
   </style>
 </head>
 <body>
-  <h1>⚡ Aminyo OS API</h1>
-  <div class="status">
-    <p>Service opérationnel ✅</p>
-    <p>Endpoints : <code>/health</code>, <code>/api/status</code>, <code>/api/webhook/:agent</code></p>
+  <div class="container">
+    <header>
+      <h1>⚡ <span>Aminyo</span> OS</h1>
+      <p>Dashboard — <span id="status-text">Vérification...</span></p>
+    </header>
+
+    <div id="loading">Chargement des données...</div>
+    <div id="content" style="display:none;">
+      <div id="error-banner" class="error-msg" style="display:none;"></div>
+
+      <div class="stats" id="stats-row"></div>
+
+      <div class="section">
+        <h2>📋 Activité récente</h2>
+        <div style="overflow-x:auto;"><table><thead><tr>
+          <th>Heure</th><th>Agent</th><th>Type</th><th>Statut</th><th>Description</th><th>Détails</th>
+        </tr></thead><tbody id="activity-table"></tbody></table></div>
+      </div>
+
+      <div class="section">
+        <h2>🚨 Alertes (24h)</h2>
+        <div style="overflow-x:auto;"><table><thead><tr>
+          <th>Heure</th><th>Agent</th><th>Description</th>
+        </tr></thead><tbody id="alerts-table"></tbody></table></div>
+      </div>
+    </div>
   </div>
+
+  <script>
+    function escapeHtml(text) {
+      const d = document.createElement('div');
+      d.textContent = text || '';
+      return d.innerHTML;
+    }
+
+    function timeAgo(iso) {
+      if (!iso) return '?';
+      const ms = Date.now() - new Date(iso).getTime();
+      const mins = Math.floor(ms / 60000);
+      if (mins < 1) return 'à l\'instant';
+      if (mins < 60) return mins + ' min';
+      const hours = Math.floor(mins / 60);
+      if (hours < 24) return hours + 'h';
+      return Math.floor(hours / 24) + 'j';
+    }
+
+    function formatDate(iso) {
+      if (!iso) return '?';
+      const d = new Date(iso);
+      return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function statusBadge(status) {
+      const map = { success: 'success', error: 'error', warning: 'warning', info: 'info' };
+      return '<span class="badge ' + (map[status] || 'info') + '">' + escapeHtml(status) + '</span>';
+    }
+
+    async function loadDashboard() {
+      try {
+        const [statsRes, activityRes] = await Promise.all([
+          fetch('/api/stats').then(r => r.json()),
+          fetch('/api/activity?limit=30').then(r => r.json())
+        ]);
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+        document.getElementById('status-text').textContent = 'Dernière mise à jour : ' + new Date().toLocaleString('fr-FR');
+
+        // Stats cards
+        const statsRow = document.getElementById('stats-row');
+        const cards = [
+          { label: 'Leads Nouveaux', value: statsRes.leads?.nouveaux || 0, color: 'blue' },
+          { label: 'Leads Chauds (7j)', value: statsRes.leads?.recents_7j || 0, color: 'purple' },
+          { label: 'Clients Actifs', value: statsRes.clients?.actifs || 0, color: 'green' },
+          { label: 'CA Mois (€)', value: parseFloat(statsRes.ca_mois_eur || 0).toLocaleString('fr-FR'), color: 'green' },
+          { label: 'Alertes Auj.', value: statsRes.alertes_aujourdhui || 0, color: 'red' },
+          { label: 'Actions Auj.', value: statsRes.actions_aujourdhui || 0, color: 'blue' },
+        ];
+        statsRow.innerHTML = cards.map(c => `
+          <div class="card">
+            <h3>${c.label}</h3>
+            <div class="value ${c.color}">${c.value}</div>
+          </div>
+        `).join('');
+
+        // Activity table
+        const actBody = document.getElementById('activity-table');
+        actBody.innerHTML = (activityRes || []).slice(0, 15).map(a => `
+          <tr>
+            <td>${formatDate(a.created_at)}</td>
+            <td>${escapeHtml(a.agent_id)}</td>
+            <td>${escapeHtml(a.type || '')}</td>
+            <td>${statusBadge(a.status)}</td>
+            <td>${escapeHtml((a.description || '').substring(0, 80))}</td>
+            <td style="font-size:11px;color:#888;max-width:200px;overflow:hidden;">
+              ${a.details ? escapeHtml(JSON.stringify(a.details).substring(0, 100)) : ''}
+            </td>
+          </tr>
+        `).join('');
+
+        // Alerts table
+        const alertsBody = document.getElementById('alerts-table');
+        const alerts = (activityRes || []).filter(a => a.status === 'error').slice(0, 10);
+        if (alerts.length === 0) {
+          alertsBody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#666;padding:20px;">Aucune alerte 🎉</td></tr>';
+        } else {
+          alertsBody.innerHTML = alerts.map(a => `
+            <tr>
+              <td>${formatDate(a.created_at)}</td>
+              <td>${escapeHtml(a.agent_id)}</td>
+              <td>${escapeHtml((a.description || '').substring(0, 100))}</td>
+            </tr>
+          `).join('');
+        }
+
+      } catch (err) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+        document.getElementById('error-banner').style.display = 'block';
+        document.getElementById('error-banner').textContent = 'Erreur de chargement : ' + err.message;
+      }
+    }
+
+    loadDashboard();
+    setInterval(loadDashboard, 30000);
+  </script>
 </body>
 </html>
