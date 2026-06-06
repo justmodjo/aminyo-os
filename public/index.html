@@ -808,11 +808,38 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
           return;
         }
 
-        // Regrouper par agent_id, garder le plus récent
+        // Déduire le nom d'agent : agent_id sinon extraire depuis type (ex: 'sentinelle.alerte' → 'sentinelle')
+        function agentName(log) {
+          if (log.agent_id) return log.agent_id;
+          if (log.type) {
+            const parts = log.type.split('.');
+            const first = parts[0].toLowerCase();
+            // Mapper les types courts vers les vrais noms d'agents
+            const map = {
+              sentinelle: 'sentinelle',
+              briefeur: 'briefeur',
+              formateur: 'formateur',
+              comptable: 'comptable',
+              gardien: 'gardien',
+              facteur: 'facteur',
+              prospecteur: 'prospecteur',
+              accueil: 'accueil',
+              batisseur: 'batisseur',
+              rapport: 'briefeur',
+              alerte: 'sentinelle',
+              heal: 'gardien',
+              check: 'sentinelle',
+              heartbeat: 'sentinelle',
+            };
+            return map[first] || first;
+          }
+          return 'inconnu';
+        }
+
+        // Regrouper par agent, garder le plus récent
         const agentMap = new Map();
         logs.forEach(log => {
-          const name = log.agent_id;
-          if (!name) return;
+          const name = agentName(log);
           if (!agentMap.has(name) || new Date(log.created_at) > new Date(agentMap.get(name).created_at)) {
             agentMap.set(name, log);
           }
@@ -824,8 +851,9 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
         const dayAgo = now - 86400000;
         const countByAgent = {};
         logs.forEach(log => {
-          if (log.agent_id && new Date(log.created_at).getTime() >= dayAgo) {
-            countByAgent[log.agent_id] = (countByAgent[log.agent_id] || 0) + 1;
+          const name = agentName(log);
+          if (new Date(log.created_at).getTime() >= dayAgo) {
+            countByAgent[name] = (countByAgent[name] || 0) + 1;
           }
         });
 
@@ -848,11 +876,12 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
           </tr>
         `).join('');
 
+        // Fonction agentName accessible dans le scope (définie plus haut)
         body.querySelectorAll('.tr-clickable').forEach(tr => {
           tr.addEventListener('click', () => {
-            const agentName = tr.dataset.agent;
-            const agentLogs = logs.filter(l => l.agent_id === agentName).slice(0, 20);
-            openAgentDrawer(agentName, agentLogs);
+            const agName = tr.dataset.agent;
+            const agentLogs = logs.filter(l => agentName(l) === agName).slice(0, 20);
+            openAgentDrawer(agName, agentLogs);
           });
         });
 
