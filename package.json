@@ -1,0 +1,18 @@
+{
+  "name": "aminyo-os-api",
+  "version": "1.0.0",
+  "description": "Aminyo OS API - Backend service",
+  "main": "api.js",
+  "scripts": {
+    "start": "node api.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "@supabase/supabase-js": "^2.39.0",
+    "stripe": "^14.14.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
