@@ -684,12 +684,12 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
       body.innerHTML = leads.map(l => `
         <tr class="tr-clickable" data-id="${l.id}">
           <td>${formatFullDate(l.created_at)}</td>
-          <td><strong>${escapeHtml(l.prenom || '')} ${escapeHtml(l.nom || '')}</strong></td>
+          <td><strong>${escapeHtml(l.first_name || l.company || '')} ${escapeHtml(l.last_name || '')}</strong></td>
           <td>${escapeHtml(l.email || '—')}</td>
-          <td>${escapeHtml(l.entreprise || '—')}</td>
+          <td>${escapeHtml(l.company || '—')}</td>
           <td>${escapeHtml(l.source || '—')}</td>
-          <td>${scoreLabel(l.score_ia)}</td>
-          <td>${statusBadge(l.statut || 'nouveau')}</td>
+          <td>${scoreLabel(l.ai_score)}</td>
+          <td>${statusBadge(l.status || 'nouveau')}</td>
         </tr>
       `).join('');
       body.querySelectorAll('.tr-clickable').forEach(tr => {
@@ -714,13 +714,13 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
 
     function openLeadDrawer(lead) {
       selectedLead = lead;
-      const currentIdx = STATUS_FLOW.indexOf(lead.statut);
+      const currentIdx = STATUS_FLOW.indexOf(lead.status);
       const nextStatuses = currentIdx >= 0 ? STATUS_FLOW.slice(currentIdx + 1) : STATUS_FLOW;
       const notes = lead.notes || lead.message || lead.commentaire || '';
       const bodyHTML = `
         <div class="field">
           <div class="field-label">Nom complet</div>
-          <div class="field-value">${escapeHtml(lead.prenom || '')} ${escapeHtml(lead.nom || '')}</div>
+          <div class="field-value">${escapeHtml(lead.first_name || lead.company || '')} ${escapeHtml(lead.last_name || '')}</div>
         </div>
         <div class="field">
           <div class="field-label">Email</div>
@@ -728,11 +728,11 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
         </div>
         <div class="field">
           <div class="field-label">Téléphone</div>
-          <div class="field-value">${escapeHtml(lead.telephone || lead.phone || '—')}</div>
+          <div class="field-value">${escapeHtml(lead.phone || '—')}</div>
         </div>
         <div class="field">
           <div class="field-label">Société</div>
-          <div class="field-value">${escapeHtml(lead.entreprise || '—')}</div>
+          <div class="field-value">${escapeHtml(lead.company || '—')}</div>
         </div>
         <div class="field">
           <div class="field-label">Source</div>
@@ -740,11 +740,11 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
         </div>
         <div class="field">
           <div class="field-label">Score IA</div>
-          <div class="field-value">${scoreLabel(lead.score_ia)}</div>
+          <div class="field-value">${scoreLabel(lead.ai_score)}</div>
         </div>
         <div class="field">
           <div class="field-label">Statut actuel</div>
-          <div class="field-value">${statusBadge(lead.statut || 'nouveau')}</div>
+          <div class="field-value">${statusBadge(lead.status || 'nouveau')}</div>
         </div>
         <div class="field">
           <div class="field-label">Créé le</div>
@@ -766,7 +766,7 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
           <div id="status-msg"></div>
         </div>` : '<p style="color:var(--dim);font-style:italic;margin-top:12px;">Lead finalisé (signé ou perdu).</p>'}
       `;
-      openDrawer('📥 Lead — ' + (lead.prenom || '') + ' ' + (lead.nom || ''), bodyHTML);
+      openDrawer('📥 Lead — ' + (lead.first_name || lead.company || ''), bodyHTML);
       const sel = document.getElementById('status-select');
       const btn = document.getElementById('btn-update-status');
       const msg = document.getElementById('status-msg');
@@ -780,13 +780,13 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
             const res = await fetch('/api/leads/' + lead.id, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ statut: sel.value })
+              body: JSON.stringify({ status: sel.value })
             });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             msg.className = 'status-msg success';
             msg.textContent = '✅ Statut mis à jour : ' + sel.value.replace(/_/g, ' ');
             btn.textContent = '✅ Fait';
-            lead.statut = sel.value;
+            lead.status = sel.value;
             loadLeads();
           } catch (err) {
             msg.className = 'status-msg error';
@@ -837,6 +837,15 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
     };
 
     function agentIdFromLog(log) {
+      // Priorité 1 : agent_name (champ standardisé, rempli par tous les agents)
+      if (log.agent_name) {
+        var id = log.agent_name.toLowerCase().replace(/[\s_-]+/g, '_');
+        for (var i = 0; i < AGENTS_DEF.length; i++) {
+          if (AGENTS_DEF[i].id === id) return id;
+        }
+        return id;
+      }
+      // Priorité 2 : agent_id (legacy)
       if (log.agent_id) {
         var id = log.agent_id.toLowerCase().replace(/[\s_-]+/g, '_');
         for (var i = 0; i < AGENTS_DEF.length; i++) {
@@ -844,6 +853,7 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
         }
         return log.agent_id;
       }
+      // Priorité 3 : type (fallback legacy)
       if (log.type) {
         var key = log.type.split('.')[0].toLowerCase();
         return TYPE_TO_AGENT[key] || null;
@@ -1295,7 +1305,7 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
       var filtered = [];
       for (var i = 0; i < leadsCache.length; i++) {
         var l = leadsCache[i];
-        var haystack = ((l.prenom || '') + ' ' + (l.nom || '') + ' ' + (l.email || '') + ' ' + (l.entreprise || '') + ' ' + (l.statut || '') + ' ' + (l.source || '')).toLowerCase();
+        var haystack = ((l.first_name || '') + ' ' + (l.last_name || '') + ' ' + (l.email || '') + ' ' + (l.company || '') + ' ' + (l.status || '') + ' ' + (l.source || '')).toLowerCase();
         if (haystack.indexOf(q) >= 0) filtered.push(l);
       }
       var body = document.getElementById('leads-table');
