@@ -1,0 +1,398 @@
+{
+  "schema_version": "1.0.0",
+  "last_updated": "2026-06-01T18:14:00Z",
+  "skills": [
+    {
+      "name": "accueil",
+      "description": "Traite les formulaires entrants aminyo.fr avec analyse IA et création automatique de leads",
+      "agent_creator": "mino",
+      "category": "business",
+      "version": "1.0.0",
+      "created_at": "2026-05-20",
+      "path": "/data/.openclaw/plugin-skills/accueil",
+      "entry_point": "SKILL.md",
+      "tags": [
+        "formulaires",
+        "leads",
+        "ia",
+        "automation",
+        "webhook"
+      ],
+      "dependencies": [
+        "supabase",
+        "telegram",
+        "anthropic"
+      ],
+      "webhooks": [
+        "/webhook/accueil",
+        "/webhook/netlify",
+        "/webhook/make"
+      ],
+      "status": "production"
+    },
+    {
+      "name": "gardien",
+      "description": "Surveille et répare automatiquement Make.com et Railway (Aminyo OS)",
+      "agent_creator": "mino",
+      "category": "surveillance",
+      "version": "1.0.0",
+      "created_at": "2026-05-21",
+      "path": "/data/.openclaw/plugin-skills/gardien",
+      "entry_point": "skill.json",
+      "tags": [
+        "monitoring",
+        "auto-heal",
+        "make",
+        "railway",
+        "heartbeat"
+      ],
+      "dependencies": [
+        "make-api",
+        "railway-api"
+      ],
+      "monitoring_frequency": "30min",
+      "status": "production"
+    },
+    {
+      "name": "browser-automation",
+      "description": "Contrôle de pages web avec OpenClaw browser tool (multi-step flows, login, tabs, recovery)",
+      "agent_creator": "openclaw-core",
+      "category": "automation",
+      "version": "core",
+      "created_at": "built-in",
+      "path": "/usr/local/lib/node_modules/openclaw/dist/extensions/browser/skills/browser-automation",
+      "entry_point": "SKILL.md",
+      "tags": [
+        "browser",
+        "automation",
+        "playwright",
+        "scraping",
+        "testing"
+      ],
+      "dependencies": [
+        "openclaw-browser-plugin"
+      ],
+      "status": "available"
+    },
+    {
+      "name": "facteur",
+      "description": "Envoie des emails via Gmail API avec OAuth 2.0 (refresh token). Usage: node /data/.openclaw/plugin-skills/facteur/agent.js send --to <email> --subject \"<sujet>\" --body \"<corps>\"",
+      "agent_creator": "mino",
+      "category": "business",
+      "version": "1.0.0",
+      "created_at": "2026-05-29",
+      "path": "/data/.openclaw/plugin-skills/facteur",
+      "entry_point": "agent.js",
+      "tags": [
+        "email",
+        "gmail",
+        "oauth",
+        "communication-client"
+      ],
+      "dependencies": [
+        "google-oauth",
+        "gmail-api"
+      ],
+      "status": "production",
+      "crons": [
+        {
+          "name": "facteur-analyse-emails",
+          "everyMs": 600000,
+          "description": "Vérifie les nouveaux emails Gmail non lus toutes les 10 min, analyse et génère des brouillons automatiques"
+        },
+        {
+          "name": "facteur-check-relances",
+          "expr": "0 * * * *",
+          "tz": "Europe/Paris",
+          "description": "Vérifie les relances en attente (+24h) chaque heure"
+        }
+      ]
+    },
+    {
+      "name": "eclaireur",
+      "version": "1.0.0",
+      "description": "Veille GitHub trending : web, Next.js, Tailwind, Supabase. Résumé Telegram chaque lundi à 9h.",
+      "agent_creator": "mino",
+      "category": "veille",
+      "created_at": "2026-05-29",
+      "path": "/data/.openclaw/plugin-skills/eclaireur",
+      "entry_point": "eclaireur.js",
+      "tags": [
+        "github",
+        "trending",
+        "veille",
+        "web",
+        "nextjs",
+        "tailwind",
+        "supabase"
+      ],
+      "dependencies": [
+        "telegram"
+      ],
+      "crons": [
+        {
+          "name": "eclaireur-trending",
+          "expr": "0 9 * * 1",
+          "tz": "Europe/Paris",
+          "description": "Scrape GitHub trending de la semaine pour web, Next.js, Tailwind, Supabase et envoie le résumé Telegram"
+        }
+      ]
+    },
+    {
+      "name": "synthetiseur",
+      "version": "1.0.0",
+      "description": "Analyse hebdomadaire des apprentissages de tous les agents dans memory_episodic et memory_semantic, consolidation des patterns utiles en memory_procedural",
+      "agent_creator": "mino",
+      "category": "apprentissage",
+      "created_at": "2026-05-29",
+      "path": "/data/.openclaw/plugin-skills/synthetiseur",
+      "entry_point": "synthetiseur.js",
+      "tags": [
+        "consolidation",
+        "memoire",
+        "apprentissage",
+        "patterns",
+        "procedures"
+      ],
+      "dependencies": [
+        "supabase-memory"
+      ],
+      "crons": [
+        {
+          "name": "synthetiseur-hebdo",
+          "expr": "0 20 * * 0",
+          "tz": "Europe/Paris",
+          "description": "Analyse memory_episodic + memory_semantic de la semaine et consolide en memory_procedural"
+        }
+      ]
+    },
+    {
+      "name": "batisseur",
+      "version": "1.0.0",
+      "description": "Détection des erreurs techniques dans les logs OpenClaw et Railway, diagnostic, correction auto ou notification Telegram",
+      "agent_creator": "mino",
+      "category": "maintenance",
+      "created_at": "2026-05-29",
+      "path": "/data/.openclaw/plugin-skills/batisseur",
+      "entry_point": "batisseur.js",
+      "tags": [
+        "logs",
+        "diagnostic",
+        "auto-heal",
+        "railway",
+        "gateway",
+        "maintenance"
+      ],
+      "dependencies": [
+        "telegram",
+        "gardien"
+      ],
+      "crons": [
+        {
+          "name": "batisseur-diagnostic",
+          "everyMs": 300000,
+          "description": "Analyse les logs OpenClaw et Railway toutes les 5 min, corrige ou notifie"
+        }
+      ]
+    },
+    {
+      "name": "reputateur",
+      "version": "1.0.0",
+      "description": "Surveille et gère la réputation en ligne d'Aminyo : avis Google My Business, réponses contextuelles, alertes avis négatifs, suivi note moyenne, rapport hebdomadaire",
+      "agent_creator": "mino",
+      "category": "communication",
+      "created_at": "2026-06-01",
+      "path": "/data/.openclaw/plugin-skills/reputateur",
+      "entry_point": "reputateur.js",
+      "tags": [
+        "reputation",
+        "google-my-business",
+        "avis",
+        "alertes",
+        "facteur"
+      ],
+      "dependencies": [
+        "facteur",
+        "sentinelle",
+        "synthetiseur"
+      ],
+      "status": "production"
+    },
+    {
+      "name": "journaliste",
+      "version": "1.0.0",
+      "description": "Génère du contenu SEO premium pour aminyo.fr : recherche mots-clés agence web Normandie, rédaction Claude Sonnet, vérification qualité 7 points, soumission Telegram pour validation Amine, push sur justmodjo/amodjo-v1 après approbation",
+      "agent_creator": "mino",
+      "category": "content",
+      "created_at": "2026-06-01",
+      "path": "/data/.openclaw/plugin-skills/journaliste",
+      "entry_point": "journaliste.js",
+      "tags": [
+        "seo",
+        "redaction",
+        "claude-sonnet",
+        "blog",
+        "contenu",
+        "normandie",
+        "amodjo-v1"
+      ],
+      "dependencies": [
+        "anthropic",
+        "telegram",
+        "github"
+      ],
+      "crons": [
+        {
+          "name": "journaliste-hebdo",
+          "expr": "0 10 * * 4",
+          "tz": "Europe/Paris",
+          "description": "Génération hebdo d'article SEO avec validation Amine avant push"
+        }
+      ],
+      "status": "production"
+    },
+    {
+      "name": "porte-parole",
+      "version": "1.0.0",
+      "description": "Génère le contenu structuré des devis et propositions depuis le contexte Supabase (lead, budget, type de projet). Format prêt à copier dans Indy. Envoie les emails d'accompagnement via le Facteur.",
+      "agent_creator": "mino",
+      "category": "business",
+      "created_at": "2026-05-30",
+      "path": "/data/.openclaw/plugin-skills/porte-parole",
+      "entry_point": "porte-parole.js",
+      "tags": [
+        "devis",
+        "propositions",
+        "indy",
+        "emails",
+        "facteur",
+        "supabase",
+        "business"
+      ],
+      "dependencies": [
+        "supabase",
+        "telegram",
+        "deepseek",
+        "facteur"
+      ],
+      "status": "production"
+    },
+    {
+      "name": "formateur",
+      "version": "1.0.0",
+      "description": "Forme les clients à leur site livré : génère des guides personnalisés selon CMS et fonctionnalités du projet dans Supabase, envoie les tutoriels via le Facteur après livraison, répond aux questions techniques basiques des clients, réduit le temps de support après livraison. Cycle Hermès complet.",
+      "agent_creator": "mino",
+      "category": "business",
+      "created_at": "2026-06-01",
+      "path": "/data/.openclaw/plugin-skills/formateur",
+      "entry_point": "formateur.js",
+      "tags": [
+        "formation",
+        "client",
+        "support",
+        "guides",
+        "facteur",
+        "cms",
+        "wordpress",
+        "webflow",
+        "nextjs",
+        "faq",
+        "hermes"
+      ],
+      "dependencies": [
+        "facteur",
+        "anthropic",
+        "supabase",
+        "telegram",
+        "learning-orchestrator",
+        "archiviste"
+      ],
+      "status": "production",
+      "hooks": {
+        "post_livraison": "node /data/.openclaw/plugin-skills/formateur/formateur.js check"
+      },
+      "crons": [
+        {
+          "name": "formateur-check-guides",
+          "everyMs": 3600000,
+          "description": "Vérifie toutes les heures si des projets livrés n'ont pas encore reçu leur guide"
+        },
+        {
+          "name": "formateur-upgrade",
+          "expr": "0 6 * * 1",
+          "tz": "Europe/Paris",
+          "description": "Améliore les guides chaque lundi à 6h avec les leçons Hermès"
+        }
+      ]
+    },
+    {
+      "name": "archiviste",
+      "version": "1.0.0",
+      "description": "Stocke et retrouve les documents clients (guides, formations, devis) dans Supabase sous /clients/[nom]/[type]/[titre]",
+      "status": "production",
+      "agent": "Mino",
+      "agent_created": "2026-06-01",
+      "category": "stockage",
+      "tags": [
+        "archive",
+        "stockage",
+        "supabase",
+        "documents",
+        "clients",
+        "formation"
+      ],
+      "dependencies": []
+    },
+    {
+      "name": "veilleur",
+      "version": "1.1.0",
+      "description": "Surveille la concurrence (agences web Normandie, tarifs, opportunités), les tendances nationales/internationales (design, pratiques, technologies), et les sources sociales/professionnelles (Awwwards, Dribbble, Behance, Product Hunt, GitHub, Twitter, LinkedIn, actualités FR). Rapport hebdomadaire le vendredi 16h. Cycle Hermès complet.",
+      "status": "production",
+      "agent": "Mino",
+      "agent_created": "2026-06-01",
+      "category": "veille",
+      "tags": [
+        "veille",
+        "concurrence",
+        "tendances",
+        "normandie",
+        "design",
+        "strategie"
+      ],
+      "dependencies": [
+        "deepseek",
+        "eclaireur",
+        "journaliste"
+      ]
+    }
+  ],
+  "categories": {
+    "business": [
+      "accueil",
+      "facteur",
+      "porte-parole",
+      "formateur"
+    ],
+    "surveillance": [
+      "gardien"
+    ],
+    "automation": [
+      "browser-automation"
+    ],
+    "communication": [
+      "reputateur"
+    ],
+    "content": [
+      "journaliste"
+    ]
+  },
+  "stats": {
+    "total_skills": 11,
+    "production_skills": 10,
+    "custom_skills": 10,
+    "core_skills": 1
+  },
+  "total_skills": 13,
+  "production_skills": 9,
+  "custom_skills": 8
+}
