@@ -536,7 +536,7 @@ th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
   <div class="container">
     <header>
       <h1>⚡ <span>Aminyo</span> OS</h1>
-      <p>Dashboard — <span id="status-text">Vérification...</span></p>
+      <p style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">Dashboard — <span id="status-text">Vérification...</span><span id="last-update" style="font-size:11px;color:var(--dim);font-weight:400;"></span></p>
     </header>
 
     <div id="loading">Chargement des données...</div>
@@ -1768,8 +1768,23 @@ th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
       }
     }
 
-    // ── INIT ───────────────────────────────────────
-    loadDashboard();
-    setInterval(loadDashboard, 30000);</script>
+    // ── AFFICHER LAST UPDATE ───────────────────────
+    function updateLastUpdate() {
+      const el = document.getElementById('last-update');
+      if (el) el.textContent = 'Mis à jour: ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+    updateLastUpdate();
+
+    // ── AUTO-REFRESH TOUS LES PANELS ─────────────────
+    setInterval(async () => {
+      const tab = document.querySelector('.tab.active');
+      const name = tab ? tab.dataset.tab : 'dashboard';
+      try {
+        if (name === 'leads') await loadLeads();
+        else await loadDashboard();
+        if (name === 'agents' && agentsLoaded) await loadAgents();
+        updateLastUpdate();
+      } catch(e) { console.log('Refresh error:', e); }
+    }, 30000);</script>
 </body>
 </html>
