@@ -36,6 +36,7 @@
   --font-h:    'Bricolage Grotesque', sans-serif;
   --font-b:    'Plus Jakarta Sans', sans-serif;
   --radius:    16px;
+  --radius-sm: 10px;
   --trans:     0.25s ease;
 }
 
@@ -227,6 +228,74 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
 .badge.error   { background: rgba(248,113,113,0.14); color: var(--red); }
 .badge.warning { background: rgba(251,191,36,0.14);  color: var(--orange); }
 .badge.info    { background: rgba(96,165,250,0.14);  color: var(--blue); }
+
+/* ── LEADS FILTERS & SORT ────────────────────── */
+.filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(124,58,237,0.1);
+}
+.filter-select {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-b);
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--trans);
+  outline: none;
+  min-width: 110px;
+}
+.filter-select:focus {
+  border-color: var(--violet);
+  box-shadow: 0 0 0 2px rgba(124,58,237,0.15);
+}
+.filter-select option { background: var(--surface); }
+.filter-clear {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-family: var(--font-b);
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--trans);
+}
+.filter-clear:hover {
+  border-color: var(--violet);
+  color: var(--text);
+  background: rgba(124,58,237,0.08);
+}
+
+/* ── SORTABLE TH ─────────────────────────────── */
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: var(--trans);
+}
+th.sortable:hover { color: var(--violet); }
+th.sortable .sort-arrow {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 10px;
+  opacity: 0.4;
+  transition: var(--trans);
+}
+th.sortable.sorted .sort-arrow { opacity: 1; color: var(--violet); }
+th.sortable.sorted.asc .sort-arrow::before { content: '▲'; }
+th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
+
+/* ── FILTER COUNTS ───────────────────────────── */
+.filter-count {
+  color: var(--dim);
+  font-size: 12px;
+  padding: 8px 18px 4px;
+}
 
 /* ── STATUS DOT ──────────────────────────────── */
 .status-dot {
@@ -490,8 +559,35 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
       <div class="tab-panel" id="panel-leads">
         <div class="section">
           <h2>📥 Tous les leads</h2>
+          <div class="filters-bar" id="leads-filters">
+            <select class="filter-select" id="filter-status">
+              <option value="">Tous les statuts</option>
+              <option value="à_qualifier">À qualifier</option>
+              <option value="en_discussion">En discussion</option>
+              <option value="devis_envoyé">Devis envoyé</option>
+              <option value="signé">Signé</option>
+              <option value="perdu">Perdu</option>
+            </select>
+            <select class="filter-select" id="filter-source">
+              <option value="">Toutes les sources</option>
+            </select>
+            <select class="filter-select" id="filter-score">
+              <option value="">Tous les scores</option>
+              <option value="60">≥ 60</option>
+              <option value="70">≥ 70</option>
+              <option value="80">≥ 80</option>
+            </select>
+            <button class="filter-clear" id="filters-clear">✕ Réinitialiser</button>
+          </div>
+          <div class="filter-count" id="leads-count"></div>
           <div style="overflow-x:auto;"><table><thead><tr>
-            <th>Date</th><th>Nom</th><th>Email</th><th>Société</th><th>Source</th><th>Score</th><th>Statut</th>
+            <th class="sortable" data-sort="date">Date<span class="sort-arrow"></span></th>
+            <th class="sortable" data-sort="name">Nom<span class="sort-arrow"></span></th>
+            <th>Email</th>
+            <th>Société</th>
+            <th>Source</th>
+            <th class="sortable" data-sort="score">Score<span class="sort-arrow"></span></th>
+            <th class="sortable" data-sort="status">Statut<span class="sort-arrow"></span></th>
           </tr></thead><tbody id="leads-table"></tbody></table></div>
         </div>
       </div>
@@ -524,6 +620,7 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
   <script>// ── STATE ──────────────────────────────────────
     let leadsCache = [];
     let selectedLead = null;
+    let leadsUIInitialized = false;
     let agentsLoaded = false;
 
     // ── UTILS ──────────────────────────────────────
@@ -601,7 +698,12 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
         if (panel) panel.classList.add('active');
         if (searchBox) searchBox.value = '';
         const name = tab.dataset.tab;
-        if (name === 'leads' && !leadsCache.length) await loadLeads();
+        if (name === 'leads') {
+          if (!leadsCache.length) {
+            await loadLeads();
+            if (!leadsUIInitialized) { initLeadsUI(); leadsUIInitialized = true; }
+          }
+        }
         if (name === 'agents' && !agentsLoaded) { agentsLoaded = true; await loadAgents(); }
         if (name === 'projets') await loadProjets();
         if (name === 'finances') await loadFinances();
@@ -675,6 +777,74 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
     // ── LEADS ──────────────────────────────────────
     const STATUS_FLOW = ['à_qualifier', 'en_discussion', 'devis_envoyé', 'signé', 'perdu'];
 
+    // États de tri et filtrage
+    let leadsSort = { key: 'date', dir: 'desc' }; // key: date|name|score|status
+    let leadsFilters = { status: '', source: '', score: '' };
+
+    // ── Applique tri + filtres sur le cache et réaffiche ──
+    function applyLeadsFiltersAndSort() {
+      let filtered = [...leadsCache];
+
+      // Filtre statut
+      if (leadsFilters.status) {
+        filtered = filtered.filter(l => l.status === leadsFilters.status);
+      }
+      // Filtre source
+      if (leadsFilters.source) {
+        filtered = filtered.filter(l => (l.source || '') === leadsFilters.source);
+      }
+      // Filtre score
+      if (leadsFilters.score) {
+        const min = parseInt(leadsFilters.score, 10);
+        filtered = filtered.filter(l => (l.ai_score != null && Number(l.ai_score) >= min));
+      }
+
+      // Tri
+      const { key, dir } = leadsSort;
+      filtered.sort((a, b) => {
+        let va, vb;
+        switch (key) {
+          case 'date':
+            va = new Date(a.created_at || 0).getTime();
+            vb = new Date(b.created_at || 0).getTime();
+            break;
+          case 'name':
+            va = (a.first_name || a.company || '').toLowerCase();
+            vb = (b.first_name || b.company || '').toLowerCase();
+            break;
+          case 'score':
+            va = a.ai_score != null ? Number(a.ai_score) : -1;
+            vb = b.ai_score != null ? Number(b.ai_score) : -1;
+            break;
+          case 'status':
+            va = (a.status || '').toLowerCase();
+            vb = (b.status || '').toLowerCase();
+            break;
+          default:
+            va = ''; vb = '';
+        }
+        if (va < vb) return dir === 'asc' ? -1 : 1;
+        if (va > vb) return dir === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      // Compteur
+      document.getElementById('leads-count').textContent =
+        filtered.length + ' lead' + (filtered.length > 1 ? 's' : '') +
+        (filtered.length !== leadsCache.length ? ' (sur ' + leadsCache.length + ')' : '');
+
+      renderLeadsTable(filtered);
+    }
+
+    // ── Populate source dropdown ──
+    function populateSourceFilter() {
+      const sel = document.getElementById('filter-source');
+      const sources = new Set();
+      leadsCache.forEach(l => { if (l.source) sources.add(l.source); });
+      sel.innerHTML = '<option value="">Toutes les sources</option>' +
+        Array.from(sources).sort().map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+    }
+
     function renderLeadsTable(leads) {
       const body = document.getElementById('leads-table');
       if (!leads.length) {
@@ -694,18 +864,75 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
       `).join('');
       body.querySelectorAll('.tr-clickable').forEach(tr => {
         tr.addEventListener('click', () => {
-          const lead = leads.find(l => l.id == tr.dataset.id);
-          if (lead) openLeadDrawer(lead);
+          const lead = (leadsSort.key !== 'date' || leadsFilters.status || leadsFilters.source || leadsFilters.score)
+            ? leadsCache.find(l => l.id == tr.dataset.id)
+            : leads.find(l => l.id == tr.dataset.id);
+          const found = leads.find(l => l.id == tr.dataset.id) || leadsCache.find(l => l.id == tr.dataset.id);
+          if (found) openLeadDrawer(found);
         });
+      });
+    }
+
+    // ── Initialisation des events de tri et filtres ──
+    function initLeadsUI() {
+      // Tri cliquable sur les en-têtes
+      document.querySelectorAll('#panel-leads th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+          const key = th.dataset.sort;
+          const isSame = leadsSort.key === key;
+          // Si déjà trié par cette colonne → on inverse, sinon → asc
+          leadsSort.dir = isSame ? (leadsSort.dir === 'asc' ? 'desc' : 'asc') : 'asc';
+          leadsSort.key = key;
+
+          // MAJ classe CSS sur tous les th
+          document.querySelectorAll('#panel-leads th.sortable').forEach(t => {
+            t.classList.remove('sorted', 'asc', 'desc');
+          });
+          th.classList.add('sorted', leadsSort.dir);
+
+          applyLeadsFiltersAndSort();
+        });
+      });
+
+      // Filtre statut
+      document.getElementById('filter-status').addEventListener('change', function() {
+        leadsFilters.status = this.value;
+        applyLeadsFiltersAndSort();
+      });
+
+      // Filtre source
+      document.getElementById('filter-source').addEventListener('change', function() {
+        leadsFilters.source = this.value;
+        applyLeadsFiltersAndSort();
+      });
+
+      // Filtre score
+      document.getElementById('filter-score').addEventListener('change', function() {
+        leadsFilters.score = this.value;
+        applyLeadsFiltersAndSort();
+      });
+
+      // Reset
+      document.getElementById('filters-clear').addEventListener('click', () => {
+        document.getElementById('filter-status').value = '';
+        document.getElementById('filter-source').value = '';
+        document.getElementById('filter-score').value = '';
+        leadsFilters = { status: '', source: '', score: '' };
+        leadsSort = { key: 'date', dir: 'desc' };
+        document.querySelectorAll('#panel-leads th.sortable').forEach(t => t.classList.remove('sorted', 'asc', 'desc'));
+        applyLeadsFiltersAndSort();
       });
     }
 
     async function loadLeads() {
       try {
-        const res = await fetch('/api/leads?limit=100');
+        const res = await fetch('/api/leads?limit=200');
         if (!res.ok) throw new Error('HTTP ' + res.status);
         leadsCache = toArray(await res.json());
-        renderLeadsTable(leadsCache);
+        populateSourceFilter();
+        // Appliquer tri par défaut : date desc
+        leadsSort = { key: 'date', dir: 'desc' };
+        applyLeadsFiltersAndSort();
       } catch (err) {
         document.getElementById('leads-table').innerHTML =
           '<tr><td colspan="7" style="text-align:center;color:var(--red);padding:30px;">Erreur : ' + escapeHtml(err.message) + '</td></tr>';
@@ -1302,18 +1529,64 @@ tbody tr:hover td { background: rgba(124,58,237,0.04); }
     }
 
     function searchLeads(q) {
-      var filtered = [];
+      // Filtrer le cache par texte
+      var textFiltered = [];
       for (var i = 0; i < leadsCache.length; i++) {
         var l = leadsCache[i];
         var haystack = ((l.first_name || '') + ' ' + (l.last_name || '') + ' ' + (l.email || '') + ' ' + (l.company || '') + ' ' + (l.status || '') + ' ' + (l.source || '')).toLowerCase();
-        if (haystack.indexOf(q) >= 0) filtered.push(l);
+        if (haystack.indexOf(q) >= 0) textFiltered.push(l);
       }
+
+      // Appliquer les filtres dropdown sur le résultat texte
+      if (leadsFilters.status) {
+        textFiltered = textFiltered.filter(l => l.status === leadsFilters.status);
+      }
+      if (leadsFilters.source) {
+        textFiltered = textFiltered.filter(l => (l.source || '') === leadsFilters.source);
+      }
+      if (leadsFilters.score) {
+        const min = parseInt(leadsFilters.score, 10);
+        textFiltered = textFiltered.filter(l => (l.ai_score != null && Number(l.ai_score) >= min));
+      }
+
+      // Trier
+      if (leadsSort.key && leadsSort.dir) {
+        const { key, dir } = leadsSort;
+        textFiltered.sort((a, b) => {
+          let va, vb;
+          switch (key) {
+            case 'date':
+              va = new Date(a.created_at || 0).getTime();
+              vb = new Date(b.created_at || 0).getTime();
+              break;
+            case 'name':
+              va = (a.first_name || a.company || '').toLowerCase();
+              vb = (b.first_name || b.company || '').toLowerCase();
+              break;
+            case 'score':
+              va = a.ai_score != null ? Number(a.ai_score) : -1;
+              vb = b.ai_score != null ? Number(b.ai_score) : -1;
+              break;
+            case 'status':
+              va = (a.status || '').toLowerCase();
+              vb = (b.status || '').toLowerCase();
+              break;
+            default:
+              va = ''; vb = '';
+          }
+          if (va < vb) return dir === 'asc' ? -1 : 1;
+          if (va > vb) return dir === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+
       var body = document.getElementById('leads-table');
-      if (filtered.length === 0) {
+      if (textFiltered.length === 0) {
         body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:30px;">Aucun resultat pour "' + escapeHtml(q) + '"</td></tr>';
       } else {
-        renderLeadsTable(filtered);
+        renderLeadsTable(textFiltered);
       }
+      document.getElementById('leads-count').textContent = textFiltered.length + ' résultat' + (textFiltered.length > 1 ? 's' : '') + ' pour "' + escapeHtml(q) + '"';
     }
 
     function searchAgents(q) {
