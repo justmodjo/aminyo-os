@@ -1,0 +1,13 @@
+{
+  "lastCheck": "2026-06-06T06:50:21.673Z",
+  "lastStatus": "CRITICAL",
+  "consecutiveFailures": {},
+  "lastAlertSent": "2026-06-06T06:50:22.044Z",
+  "lastSummary": {
+    "supabase": "WARNING - 8/15 tables OK, 7 tables métier sans GRANT service_role (deadline 30 mai)",
+    "railway": "OK",
+    "watchdog": "OK",
+    "make": "OK",
+    "providers": "OK"
+  }
+}

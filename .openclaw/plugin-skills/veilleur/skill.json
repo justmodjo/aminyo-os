@@ -1,0 +1,15 @@
+{
+  "name": "veilleur",
+  "version": "1.1.0",
+  "description": "Surveille la concurrence (agences web Normandie, tarifs, opportunités) et les tendances nationales/internationales (design, pratiques, technologies). Rapport hebdomadaire le vendredi 16h. Collabore avec Éclaireur, Journaliste et Stratège.",
+  "agent": "Mino",
+  "created": "2026-06-01",
+  "category": "veille",
+  "tags": ["veille", "concurrence", "tendances", "normandie", "design", "strategie"],
+  "dependencies": ["deepseek", "eclaireur", "journaliste"],
+  "version_history": [
+    { "version": "1.0.0", "description": "Création initiale : scraping sources locales + nationales, analyse DeepSeek, rapport Telegram vendredi 16h" },
+    { "version": "1.1.0", "description": "Ajout nouvelles sources : Awwwards (top sites), Dribbble, Behance, Product Hunt, GitHub Trending, Google Alerts (concurrence + national), Les Numériques, Siècle Digital, Twitter Nitter, LinkedIn tendances" }
+  ],
+  "status": "production"
+}

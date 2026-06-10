@@ -1,0 +1,182 @@
+{
+  "lastChecks": {
+    "heartbeat": "2026-06-05T11:50:00Z",
+    "autoHeal": "2026-06-05T11:50:17Z",
+    "sentinelle": "2026-06-05T11:50:38Z",
+    "railway": 1780728632446,
+    "make": 1780728632904,
+    "providers": "2026-06-05T11:50:38Z",
+    "supabase": "2026-06-05T11:50:38Z",
+    "watchdog": "2026-06-05T11:50:33Z"
+  },
+  "status": "CRITICAL (Watchdog inactif - Make scenario désactivé)",
+  "cleanupFailureCount": 0,
+  "lastCleanupResult": "3 recovered sessions non supprimables (cleanup 0)",
+  "lastAutoHealCheck": 1780728632295,
+  "lastAutoHealIssues": {
+    "staleHeartbeats": [
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-06t06-44-26.203z",
+        "ageMs": 1825713
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-05t18-18-52.073z",
+        "ageMs": 46825695
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-05t17-16-45.073z",
+        "ageMs": 50396268
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-05t16-48-36.968z",
+        "ageMs": 52225715
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-05t13-33-59.201z",
+        "ageMs": 62431905
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-05t10-51-18.453z",
+        "ageMs": 73825719
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-04t08-40-29.808z",
+        "ageMs": 167425720
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-03t08-58-45.443z",
+        "ageMs": 251530776
+      }
+    ],
+    "recoveredSessions": [
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-06t06-44-26.203z",
+        "ageMs": 1825713
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-05t18-18-52.073z",
+        "ageMs": 46825695
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-05t17-16-45.073z",
+        "ageMs": 50396268
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-05t16-48-36.968z",
+        "ageMs": 52225715
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-05t13-33-59.201z",
+        "ageMs": 62431905
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-05t10-51-18.453z",
+        "ageMs": 73825719
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-04t08-40-29.808z",
+        "ageMs": 167425720
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-03t08-58-45.443z",
+        "ageMs": 251530776
+      }
+    ],
+    "staleSessions": [
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-06t06-44-26.203z",
+        "ageMs": 1825713
+      },
+      {
+        "key": "agent:main:cron:c0e63d80-f889-4de6-8293-9536f3082e20",
+        "ageMs": 2759461
+      },
+      {
+        "key": "agent:main:cron:58442603-ebf7-4749-92e9-625bddb11898",
+        "ageMs": 2847528
+      },
+      {
+        "key": "agent:main:cron:fe0e305a-5b6a-493c-93be-0a8878079a7a",
+        "ageMs": 2952788
+      },
+      {
+        "key": "agent:main:cron:22f655bf-529c-4e2d-9008-18c6396f17e2",
+        "ageMs": 4832082
+      },
+      {
+        "key": "agent:main:cron:42ce0834-74ed-4eeb-9d0f-ff5e655d39fd",
+        "ageMs": 4832140
+      },
+      {
+        "key": "agent:main:cron:561de5fd-1fe3-4c1d-aef8-d43f4909be44:run:1780720200007",
+        "ageMs": 8381523
+      },
+      {
+        "key": "agent:main:cron:d70b54ca-101a-4500-8c4d-4d4f84617744",
+        "ageMs": 8420801
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-05t18-18-52.073z",
+        "ageMs": 46825695
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-05t17-16-45.073z",
+        "ageMs": 50396268
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-05t16-48-36.968z",
+        "ageMs": 52225715
+      },
+      {
+        "key": "agent:main:cron:a518646b-aabe-47f4-b370-3b1828bafa32",
+        "ageMs": 53432063
+      },
+      {
+        "key": "agent:main:cron:4735f1a4-e434-4490-b6e0-af185d1cae6c",
+        "ageMs": 60596839
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-05t13-33-59.201z",
+        "ageMs": 62431905
+      },
+      {
+        "key": "agent:main:cron:4ae7838f-a20c-42ca-a56a-889774891358:run:1780664400011",
+        "ageMs": 64175633
+      },
+      {
+        "key": "agent:main:cron:1a1afe0d-9bb8-46ff-8dd5-c223a71e30ef:run:1780661811960",
+        "ageMs": 66814579
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-05t10-51-18.453z",
+        "ageMs": 73825719
+      },
+      {
+        "key": "agent:main:subagent:ccf8dfd6-3b21-4d05-b96f-31f7fc99d1fe",
+        "ageMs": 142272531
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-04t08-40-29.808z",
+        "ageMs": 167425720
+      },
+      {
+        "key": "agent:main:cron:fc70e675-fccd-4ffa-b026-0c4125043f69",
+        "ageMs": 168632147
+      },
+      {
+        "key": "agent:main:heartbeat-recovered-2026-06-03t08-58-45.443z",
+        "ageMs": 251530776
+      }
+    ],
+    "totalSessions": 26
+  },
+  "lastAlertSent": "2026-06-05T11:50:38Z",
+  "incidents": [
+    {
+      "type": "watchdog_inactif",
+      "timestamp": "2026-06-05T11:50:33Z",
+      "details": "Scénario Make Watchdog désactivé - pas de prochaine exécution planifiée",
+      "alerted": true
+    }
+  ]
+}

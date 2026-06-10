@@ -1,0 +1,15 @@
+{
+  "name": "Journaliste",
+  "version": "1.0.0",
+  "description": "Génère du contenu SEO premium pour aminyo.fr : recherche mots-clés agence web Normandie, rédaction Claude Sonnet, vérification originalité, validation Amine avant push sur justmodjo/amodjo-v1",
+  "agentCreator": "Mino",
+  "createdAt": "2026-06-01",
+  "category": "content",
+  "tags": ["seo", "redaction", "claude-sonnet", "blog", "contenu", "normandie", "amodjo-v1"],
+  "dependencies": ["facteur", "synthetiseur", "sentinelle"],
+  "crons": ["journaliste-hebdo"],
+  "busMessages": {
+    "publie": ["journaliste.article-publie", "journaliste.erreur-generation"],
+    "ecoute": ["sentinelle.heartbeat", "synthetiseur.lecon-consolidee"]
+  }
+}
