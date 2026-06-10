@@ -472,6 +472,24 @@ th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
   cursor: pointer;
 }
 .drawer-body select:focus { outline: none; border-color: var(--violet); }
+/* ── CYCLE BADGE ───────────────────────────── */
+.badge-cycle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(251,191,36,0.15);
+  color: #FBBF24;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(251,191,36,0.3);
+  margin-left: 4px;
+}
+.badge-cycle::before {
+  content: '🔄';
+  font-size: 9px;
+}
 .drawer-body .btn-status {
   margin-top: 16px;
   padding: 10px 20px;
@@ -576,6 +594,11 @@ th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
               <option value="60">≥ 60</option>
               <option value="70">≥ 70</option>
               <option value="80">≥ 80</option>
+            </select>
+            <select class="filter-select" id="filter-cycle">
+              <option value="">Tous les leads</option>
+              <option value="cycle">🔄 Cycle en cours</option>
+              <option value="not_cycle">Hors cycle</option>
             </select>
             <button class="filter-clear" id="filters-clear">✕ Réinitialiser</button>
           </div>
@@ -779,7 +802,7 @@ th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
 
     // États de tri et filtrage
     let leadsSort = { key: 'date', dir: 'desc' }; // key: date|name|score|status
-    let leadsFilters = { status: '', source: '', score: '' };
+    let leadsFilters = { status: '', source: '', score: '', cycle: '' };
 
     // ── Applique tri + filtres sur le cache et réaffiche ──
     function applyLeadsFiltersAndSort() {
@@ -797,6 +820,13 @@ th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
       if (leadsFilters.score) {
         const min = parseInt(leadsFilters.score, 10);
         filtered = filtered.filter(l => (l.ai_score != null && Number(l.ai_score) >= min));
+      }
+
+      // Filtre cycle
+      if (leadsFilters.cycle === 'cycle') {
+        filtered = filtered.filter(l => (l.pipeline_stage || '').startsWith('Cycle '));
+      } else if (leadsFilters.cycle === 'not_cycle') {
+        filtered = filtered.filter(l => !(l.pipeline_stage || '').startsWith('Cycle '));
       }
 
       // Tri
@@ -859,12 +889,12 @@ th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
           <td>${escapeHtml(l.company || '—')}</td>
           <td>${escapeHtml(l.source || '—')}</td>
           <td>${scoreLabel(l.ai_score)}</td>
-          <td>${statusBadge(l.status || 'nouveau')}</td>
+          <td>${statusBadge(l.status || 'nouveau')}${(l.pipeline_stage || '').startsWith('Cycle ') ? '<span class="badge-cycle">' + escapeHtml(l.pipeline_stage) + '</span>' : ''}</td>
         </tr>
       `).join('');
       body.querySelectorAll('.tr-clickable').forEach(tr => {
         tr.addEventListener('click', () => {
-          const lead = (leadsSort.key !== 'date' || leadsFilters.status || leadsFilters.source || leadsFilters.score)
+          const lead = (leadsSort.key !== 'date' || leadsFilters.status || leadsFilters.source || leadsFilters.score || leadsFilters.cycle)
             ? leadsCache.find(l => l.id == tr.dataset.id)
             : leads.find(l => l.id == tr.dataset.id);
           const found = leads.find(l => l.id == tr.dataset.id) || leadsCache.find(l => l.id == tr.dataset.id);
@@ -912,12 +942,19 @@ th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
         applyLeadsFiltersAndSort();
       });
 
+      // Filtre cycle
+      document.getElementById('filter-cycle').addEventListener('change', function() {
+        leadsFilters.cycle = this.value;
+        applyLeadsFiltersAndSort();
+      });
+
       // Reset
       document.getElementById('filters-clear').addEventListener('click', () => {
         document.getElementById('filter-status').value = '';
         document.getElementById('filter-source').value = '';
         document.getElementById('filter-score').value = '';
-        leadsFilters = { status: '', source: '', score: '' };
+        document.getElementById('filter-cycle').value = '';
+        leadsFilters = { status: '', source: '', score: '', cycle: '' };
         leadsSort = { key: 'date', dir: 'desc' };
         document.querySelectorAll('#panel-leads th.sortable').forEach(t => t.classList.remove('sorted', 'asc', 'desc'));
         applyLeadsFiltersAndSort();
@@ -1547,6 +1584,13 @@ th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
       if (leadsFilters.score) {
         const min = parseInt(leadsFilters.score, 10);
         textFiltered = textFiltered.filter(l => (l.ai_score != null && Number(l.ai_score) >= min));
+      }
+
+      // Filtre cycle
+      if (leadsFilters.cycle === 'cycle') {
+        textFiltered = textFiltered.filter(l => (l.pipeline_stage || '').startsWith('Cycle '));
+      } else if (leadsFilters.cycle === 'not_cycle') {
+        textFiltered = textFiltered.filter(l => !(l.pipeline_stage || '').startsWith('Cycle '));
       }
 
       // Trier
