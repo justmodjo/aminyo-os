@@ -206,6 +206,70 @@ app.get('/api/ai-actions', requireSupabase, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ── OAuth Callback ──────────────────────────────────────────
+const fs = require('fs');
+const https = require('https');
+
+app.get('/callback-oauth', async (req, res) => {
+  const { code, state, error } = req.query;
+  if (error) {
+    console.error('[oauth] Erreur:', error);
+    return res.status(400).send('<h2>❌ Autorisation refusée</h2><p>Erreur: ' + error + '</p><p>Tu peux fermer cette page.</p>');
+  }
+  if (!code) {
+    return res.status(400).send('<h2>❌ Code manquant</h2>');
+  }
+
+  try {
+    const tools = JSON.parse(fs.readFileSync('/data/.openclaw/plugin-skills/gardien/tools.json', 'utf8'));
+    const clientId = tools.google_client_id || process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = tools.google_client_secret || process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = req.protocol + '://' + req.get('host') + '/callback-oauth';
+
+    // Échanger le code contre un refresh token
+    const tokenData = await new Promise((resolve, reject) => {
+      const body = new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      });
+      const reqHttps = https.request({
+        hostname: 'oauth2.googleapis.com',
+        path: '/token',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      }, (res) => {
+        let d = '';
+        res.on('data', c => d += c);
+        res.on('end', () => {
+          try { resolve(JSON.parse(d)); }
+          catch (e) { reject(new Error('Parse error: ' + d)); }
+        });
+      });
+      reqHttps.on('error', reject);
+      reqHttps.write(body.toString());
+      reqHttps.end();
+    });
+
+    if (!tokenData.refresh_token) {
+      console.error('[oauth] Pas de refresh_token dans la réponse:', JSON.stringify(tokenData));
+      return res.status(400).send('<h2>⚠️ Pas de refresh token reçu</h2><p>Réponse: ' + JSON.stringify(tokenData) + '</p>');
+    }
+
+    // Sauvegarder le nouveau refresh token
+    tools.google_refresh_token = tokenData.refresh_token;
+    fs.writeFileSync('/data/.openclaw/plugin-skills/gardien/tools.json', JSON.stringify(tools, null, 2));
+    console.log('[oauth] ✅ Nouveau refresh token enregistré');
+
+    res.send('<h2>✅ Autorisation Gmail réussie !</h2><p>Le Facteur peut maintenant lire et gérer tes emails.</p><p>Tu peux fermer cette page et retourner sur Telegram.</p>');
+  } catch (e) {
+    console.error('[oauth] Erreur:', e.message);
+    res.status(500).send('<h2>❌ Erreur serveur</h2><p>' + e.message + '</p>');
+  }
+});
+
 // ── Webhook ────────────────────────────────────────────────
 app.post('/api/webhook/:agent', (req, res) => {
   const { agent } = req.params;
