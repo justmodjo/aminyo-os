@@ -66,36 +66,93 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ── Dashboard Stats ────────────────────────────────────────
+// ── Dashboard Stats enrichi ─────────────────────────────────
 async function getDashboardStats() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const today = new Date(now); today.setHours(0, 0, 0, 0);
   const todayISO = today.toISOString();
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
   const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+  const yearStart = new Date(now.getFullYear(), 0, 1).toISOString();
 
-  const [leadsNew, leadsChaud, clientsActifs, paymentsMonth, eventsToday] = await Promise.all([
+  // Requêtes parallèles
+  const [
+    leadsNew, leads7j, clientsActifs, paymentsYear, paymentsMonth,
+    maintenances, eventsToday, leadsBySource
+  ] = await Promise.all([
     safeQuery('leads', { eq: { status: 'nouveau' }, count: true }).catch(() => ({ count: 0 })),
     safeQuery('leads', { gte: { created_at: weekAgo }, count: true }).catch(() => ({ count: 0 })),
     safeQuery('clients', { eq: { status: 'actif' }, count: true }).catch(() => ({ count: 0 })),
+    safeQuery('payments', { gte: { date: yearStart } }).catch(() => ({ data: [] })),
     safeQuery('payments', { gte: { date: monthAgo } }).catch(() => ({ data: [] })),
-    safeQuery('activity_logs', { gte: { created_at: todayISO }, order: { field: 'created_at', asc: false }, limit: 50 }).catch(() => ({ data: [] })),
+    safeQuery('maintenance_plans', { eq: { status: 'active' }, count: true }).catch(() => ({ count: 0 })),
+    safeQuery('activity_logs', { gte: { created_at: todayISO }, order: { field: 'created_at', asc: false }, limit: 100 }).catch(() => ({ data: [] })),
+    safeQuery('leads', { gte: { created_at: yearStart }, limit: 500 }).catch(() => ({ data: [] })),
   ]);
 
+  // CA mensuel (par mois)
+  const caMensuel = {};
+  paymentsYear.data.forEach(p => {
+    const m = (p.date || p.created_at || '').slice(0, 7);
+    if (m) caMensuel[m] = (caMensuel[m] || 0) + parseFloat(p.amount || p.montant || 0);
+  });
   const caMois = paymentsMonth.data.reduce((s, p) => s + parseFloat(p.amount || p.montant || 0), 0);
+
+  // MRR : maintenance plans actifs * prix
+  const mrr = (maintenances.count || 0) * 99; // forfait maintenance standard
+
+  // Leads par source
+  const sources = {};
+  leadsBySource.data.forEach(l => {
+    const src = l.source || 'non_renseigne';
+    sources[src] = (sources[src] || 0) + 1;
+  });
+
+  // Statut agents depuis activity_logs
+  const agentsStatus = {};
+  const agentNames = ['sentinelle','prospecteur-chaud','veilleur','journaliste','facteur','reputateur','batisseur','formateur','eclaireur','synthetiseur'];
+  agentNames.forEach(a => {
+    const logs = eventsToday.data.filter(e => (e.agent_name || e.agent || '').toLowerCase().includes(a));
+    if (logs.length === 0) agentsStatus[a] = 'gris';       // pas de données
+    else {
+      const hasError = logs.some(e => (e.status || '') === 'error');
+      const hasOk = logs.some(e => (e.status || '') === 'success' || (e.status || '') === 'ok');
+      agentsStatus[a] = hasError ? 'rouge' : hasOk ? 'vert' : 'orange';
+    }
+  });
+
   const alertsToday = eventsToday.data.filter(e => e.status === 'error');
 
   return {
-    leads: { nouveaux: leadsNew.count || 0, recents_7j: leadsChaud.count || 0 },
-    clients: { actifs: clientsActifs.count || 0 },
-    ca_mois_eur: caMois.toFixed(2),
-    alertes_aujourdhui: alertsToday.length,
+    resume: {
+      leads_nouveaux: leadsNew.count || 0,
+      leads_7j: leads7j.count || 0,
+      clients_actifs: clientsActifs.count || 0,
+      ca_mois_eur: caMois.toFixed(2),
+      mrr_eur: mrr.toFixed(0),
+      alertes_aujourdhui: alertsToday.length
+    },
+    ca_mensuel: Object.entries(caMensuel).sort().map(([mois, montant]) => ({
+      mois, montant: montant.toFixed(2)
+    })),
+    leads_par_source: sources,
+    agents: agentsStatus,
     actions_aujourdhui: eventsToday.data.length,
     timestamp: new Date().toISOString()
   };
 }
 
 app.get('/api/stats', requireSupabase, async (req, res) => {
+  try {
+    const stats = await getDashboardStats();
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/dashboard — Dashboard enrichi (alias de /api/stats avec plus de données)
+app.get('/api/dashboard', requireSupabase, async (req, res) => {
   try {
     const stats = await getDashboardStats();
     res.json(stats);
