@@ -1,0 +1,66 @@
+/* ===== ASSET PATHS (Cloudinary CDN) ===== */
+const A = {
+  corps: {
+    homme: {
+      lean: {
+        clair1: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_lean_clair1_ld7hjt.png",
+        clair2: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_lean_clair2_mvvtix.png",
+        medium: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_lean_medium_xx4imo.png",
+        mat: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_lean_mat_xohuoz.png",
+        fonce: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_lean_fonce_s4z2do.png",
+        ebene: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_lean_ebene_ma4jrc.png",
+      },
+      athletic: {
+        clair1: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_athletic_clair1_z3pito.png",
+        clair2: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_athletic_clair2_z65svs.png",
+        medium: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_athletic_medium_bwpfld.png",
+        mat: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_athletic_mat_in6gpe.png",
+        fonce: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_athletic_fonce_cbnfnu.png",
+        ebene: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_athletic_ebene_o7cogk.png",
+      },
+      power: {
+        clair1: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_power_clair1_eu7dex.png",
+        clair2: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_power_clair2_accj59.png",
+        medium: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_power_medium_jkbqea.png",
+        mat: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_power_mat_zj5kok.png",
+        fonce: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_power_fonce_ajdxh9.png",
+        ebene: "https://res.cloudinary.com/dsbgqfcd3/image/upload/homme_power_ebene_jduzio.png",
+      },
+    },
+    femme: {
+      lean: {
+        clair1: "https://res.cloudinary.com/dsbgqfcd3/image/upload/femme_lean_clair1_dqeonw.png",
+        clair2: "https://res.cloudinary.com/dsbgqfcd3/image/upload/femme_lean_clair2_yuvleu.png",
+        medium: "https://res.cloudinary.com/dsbgqfcd3/image/upload/femme_lean_medium_cbamgv.png",
+        mat: "https://res.cloudinary.com/dsbgqfcd3/image/upload/femme_lean_mat_vv58si.png",
+        fonce: "https://res.cloudinary.com/dsbgqfcd3/image/upload/femme_lean_fonce_ahxvqc.png",
+        ebene: "https://res.cloudinary.com/dsbgqfcd3/image/upload/femme_lean_ebene_nbyygg.png",
+      },
+      athletic: {
+        clair1: "https://res.cloudinary.com/dsbgqfcd3/image/upload/femme_athletic_clair1_hqoxyn.png",
+        clair2: "https://res.cloudinary.com/dsbgqfcd3/image/upload/femme_athletic_clair2_lsfnp5.png",
+        medium: "https://res.cloudinary.com/dsbgqfcd3/image/upload/femme_athletic_medium_krgte8.png",
+        mat: "https://res.cloudinary.com/dsbgqfcd3/image/upload/femme_athletic_mat_gltymg.png",
+        fonce: "https://res.cloudinary.com/dsbgqfcd3/image/upload/femme_athletic_fonce_zum095.png",
+        ebene: "https://res.cloudinary.com/dsbgqfcd3/image/upload/femme_athletic_ebene_jeokt7.png",
+      },
+    },
+  },
+  yeux: {
+    homme: {
+      marron: "https://res.cloudinary.com/dsbgqfcd3/image/upload/yeux_marron_djzpin.png",
+      noisette: "https://res.cloudinary.com/dsbgqfcd3/image/upload/yeux_noisette_bonv8k.png",
+      verts: "https://res.cloudinary.com/dsbgqfcd3/image/upload/yeux_verts_pwosf2.png",
+      bleus: "https://res.cloudinary.com/dsbgqfcd3/image/upload/yeux_bleus_y4sifi.png",
+    },
+    femme: {
+      marron: "https://res.cloudinary.com/dsbgqfcd3/image/upload/f_yeux_marron_tshwls.png",
+      noisette: "https://res.cloudinary.com/dsbgqfcd3/image/upload/f_yeux_noisette_1_nwmxj8.png",
+      verts: "https://res.cloudinary.com/dsbgqfcd3/image/upload/f_yeux_verts_mbmiyi.png",
+      bleus: "https://res.cloudinary.com/dsbgqfcd3/image/upload/f_yeux_bleus_sebnie.png",
+    },
+  },
+  cheveux_h: {
+    courts: c => { const U = { noir:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_courts_noir_c6uvvx.png", brun:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_courts_brun_ioapjc.png", chatain:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_courts_chatain_bmrc3g.png", blond:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_courts_blond_s6wnat.png", roux:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_courts_roux_nuqoop.png", gris:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_courts_gris_hfodq9.png" }; return U[c] || U.noir; },
+    rase: c => { const U = { noir:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_rase_noir_pp9rcj.png", brun:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_rase_brun_ymszjd.png", chatain:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_rase_chatain_p0kuki.png", blond:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_rase_blond_ztiquv.png", roux:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_rase_roux_pzxfgc.png", gris:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_rase_gris_nveylc.png" }; return U[c] || U.noir; },
+    degrade: c => { const U = { noir:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_degrade_noir_afl1xo.png", brun:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_degrade_brun_fgbayf.png", chatain:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_degrade_chatain_t8jame.png", blond:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_degrade_blond_wykwih.png", roux:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_degrade_roux_s9m0vp.png", gris:"https://res.cloudinary.com/dsbgqfcd3/image/upload/h_cheveux_degrade_gris_qdxfie.png" }; return U[c] || U.noir; },

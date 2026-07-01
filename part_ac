@@ -1,0 +1,100 @@
+    bouc1: "https://res.cloudinary.com/dsbgqfcd3/image/upload/h_barbe_bouc1_uvwubp.png",
+    bouc2: "https://res.cloudinary.com/dsbgqfcd3/image/upload/h_barbe_bouc2_vqncrf.png",
+  },
+  tenue_haut_h: {
+    full_black: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_haut_full_black_kmmr5c.png",
+    blanc_noir: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_haut_blanc_noir_zjwjai.png",
+    gris_rouge: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_haut_gris_rouge_frombh.png",
+    navy_blanc: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_haut_navy_blanc_taq24y.png",
+    noir_jaune: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_f_haut_noir_jaune_hbhz0t.png",
+  },
+  tenue_bas_h: {
+    noir: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_bas_noir_wr8kba.png",
+    blanc: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_bas_blanc_iesfqz.png",
+    gris: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_bas_gris_m6feut.png",
+    navy: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_bas_navy_uwzyip.png",
+    rouge: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_bas_rouge_wr7flj.png",
+  },
+  tenue_haut_f: {
+    full_black: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_f_haut_full_black_c9ague.png",
+    blanc_noir: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_f_haut_blanc_noir_r09wb6.png",
+    gris_rouge: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_f_haut_gris_rouge_ntrq9n.png",
+    navy_blanc: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_f_haut_navy_blanc_jmzrud.png",
+    noir_jaune: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_f_haut_noir_jaune_hbhz0t.png",
+  },
+  tenue_bas_f: {
+    noir: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_f_bas_noir_eiqkfb.png",
+    blanc: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_f_bas_blanc_t9y0gb.png",
+    gris: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_f_bas_gris_vusuyu.png",
+    navy: "https://res.cloudinary.com/dsbgqfcd3/image/upload/tenue_f_bas_navy_j0ahn8.png",
+  },
+  shoes_h: {
+    nike_metcon: "https://res.cloudinary.com/dsbgqfcd3/image/upload/shoes_f_nike_metcon_w4vztc.png",
+    adidas_ultraboost: "https://res.cloudinary.com/dsbgqfcd3/image/upload/shoes_f_adidas_ultraboost_qyhhsu.png",
+    nobull: "https://res.cloudinary.com/dsbgqfcd3/image/upload/shoes_f_nobull_ekz2vj.png",
+    on_running: "https://res.cloudinary.com/dsbgqfcd3/image/upload/shoes_f_on_running_socmn9.png",
+  },
+  shoes_f: {
+    nike_metcon: "https://res.cloudinary.com/dsbgqfcd3/image/upload/shoes_f_nike_metcon_w4vztc.png",
+    adidas_ultraboost: "https://res.cloudinary.com/dsbgqfcd3/image/upload/shoes_f_adidas_ultraboost_qyhhsu.png",
+    nobull: "https://res.cloudinary.com/dsbgqfcd3/image/upload/shoes_f_nobull_ekz2vj.png",
+    on_running: "https://res.cloudinary.com/dsbgqfcd3/image/upload/shoes_f_on_running_socmn9.png",
+  },
+  acc_tete: {
+    casquette: "https://res.cloudinary.com/dsbgqfcd3/image/upload/acc_tete_casquette_kjprzc.png",
+    bandeau: "https://res.cloudinary.com/dsbgqfcd3/image/upload/acc_tete_bandeau_uxffnw.png",
+    lunettes: "https://res.cloudinary.com/dsbgqfcd3/image/upload/acc_tete_lunettes_stm2vp.png",
+  },
+  acc_corps: {
+    montre: "https://res.cloudinary.com/dsbgqfcd3/image/upload/acc_corps_montre_j0cww1.png",
+    genouilleres: "https://res.cloudinary.com/dsbgqfcd3/image/upload/acc_corps_genouilleres_tiabpb.png",
+    gants: "https://res.cloudinary.com/dsbgqfcd3/image/upload/acc_corps_gants_lu8ay0.png",
+  },
+  dossard: "https://res.cloudinary.com/dsbgqfcd3/image/upload/dossard_hyrox_nfu1g7.png",
+};
+
+const MORPHO_SCALE = {
+  lean:     { sx: 0.88, sy: 1.0,  tx: 0.06, ty: 0 },
+  athletic: { sx: 1.0,  sy: 1.0,  tx: 0,    ty: 0 },
+  power:    { sx: 1.15, sy: 1.05, tx: -0.075, ty: 0 },
+};
+
+const PROGRAMMES = {
+  lean:     { nom: 'Programme Endurance', badge: 'RUNNER', vibe: "T'es fait pour voler. On va te faire voler encore plus vite.", seances: '4x/semaine', duree: '12 semaines' },
+  athletic: { nom: 'Programme Complet',   badge: 'ALL-IN',  vibe: "Le bon mix. C'est exactement ça, Hyrox.", seances: '4x/semaine', duree: '10 semaines' },
+  power:    { nom: 'Programme Force',     badge: 'BEAST',   vibe: "T'as la base. On va tout canaliser.", seances: '3x/semaine', duree: '12 semaines' },
+};
+
+let state = {
+  prenom: '',
+  programme: 'athletic',
+  genre: null, morpho: null, carnation: null, yeux: null,
+  cheveux_style: null, cheveux_couleur: null, barbe: null,
+  tenue_haut: null, tenue_bas: null, shoes: null,
+  acc_tete: new Set(), acc_corps: new Set(),
+  showDossard: false,
+};
+
+const CANVAS_W = 768;
+const CANVAS_H = 1024;
+let canvas, ctx, imageCache = {};
+
+function getAllPaths() {
+  const paths = new Set();
+  const carnations = ['clair1','clair2','medium','mat','fonce','ebene'];
+  const couleurs = ['noir','brun','chatain','blond','roux','gris'];
+  carnations.forEach(c => {
+    ['lean','athletic','power'].forEach(m => paths.add(A.corps.homme[m][c]));
+    ['lean','athletic'].forEach(m => paths.add(A.corps.femme[m][c]));
+  });
+  ['homme','femme'].forEach(g => Object.values(A.yeux[g]).forEach(p => paths.add(p)));
+  couleurs.forEach(c => {
+    Object.values(A.cheveux_h).forEach(fn => { const p = fn(c); if(p) paths.add(p); });
+    Object.values(A.cheveux_f).forEach(fn => { const p = fn(c); if(p) paths.add(p); });
+  });
+  Object.values(A.barbe).forEach(p => paths.add(p));
+  Object.values(A.tenue_haut_h).forEach(p => paths.add(p));
+  Object.values(A.tenue_bas_h).forEach(p => paths.add(p));
+  Object.values(A.tenue_haut_f).forEach(p => paths.add(p));
+  Object.values(A.tenue_bas_f).forEach(p => paths.add(p));
+  Object.values(A.shoes_h).forEach(p => paths.add(p));

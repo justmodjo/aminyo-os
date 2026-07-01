@@ -1,0 +1,215 @@
+  Object.values(A.shoes_f).forEach(p => paths.add(p));
+  Object.values(A.acc_tete).forEach(p => paths.add(p));
+  Object.values(A.acc_corps).forEach(p => paths.add(p));
+  paths.add(A.dossard);
+  return Array.from(paths).filter(p => typeof p === 'string' && p.length > 0);
+}
+
+async function preloadImages(onProgress) {
+  const paths = getAllPaths();
+  const total = paths.length;
+  let loaded = 0;
+  await Promise.all(paths.map(path => new Promise(resolve => {
+    if (imageCache[path]) { loaded++; onProgress?.(loaded / total); resolve(); return; }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => { imageCache[path] = img; loaded++; onProgress?.(loaded / total); resolve(); };
+    img.onerror = () => { loaded++; onProgress?.(loaded / total); resolve(); };
+    img.src = path;
+  })));
+}
+
+/* ===== DRAW HELPERS ===== */
+
+function img(url) { return imageCache[url] || null; }
+
+function drawImageC(url, dx, dy, dw, dh) {
+  const i = img(url);
+  if (!i) return;
+  ctx.drawImage(i, dx, dy, dw, dh);
+}
+
+/* ===== LAYER DRAW FUNCTIONS ===== */
+
+function drawBackground() {
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+}
+
+function drawCorps() {
+  if (!state.genre || !state.morpho || !state.carnation) return;
+  const url = A.corps[state.genre][state.morpho][state.carnation];
+  if (!url) return;
+  const scale = MORPHO_SCALE[state.morpho] || MORPHO_SCALE.athletic;
+  const w = CANVAS_W * scale.sx;
+  const h = CANVAS_H * scale.sy;
+  const x = CANVAS_W * scale.tx;
+  const y = CANVAS_H * scale.ty;
+  drawImageC(url, x, y, w, h);
+}
+
+function drawYeux() {
+  if (!state.genre || !state.yeux) return;
+  const url = A.yeux[state.genre][state.yeux];
+  if (!url) return;
+  drawImageC(url, 0, 0, CANVAS_W, CANVAS_H);
+}
+
+function drawCheveux() {
+  if (!state.genre || !state.cheveux_style || !state.cheveux_couleur) return;
+  const map = state.genre === 'homme' ? A.cheveux_h : A.cheveux_f;
+  const fn = map[state.cheveux_style];
+  if (!fn) return;
+  const url = fn(state.cheveux_couleur);
+  if (!url) return;
+  drawImageC(url, 0, 0, CANVAS_W, CANVAS_H);
+}
+
+function drawBarbe() {
+  if (state.genre !== 'homme' || !state.barbe) return;
+  const url = A.barbe[state.barbe];
+  if (!url) return;
+  drawImageC(url, 0, 0, CANVAS_W, CANVAS_H);
+}
+
+function drawTenueHaut() {
+  if (!state.genre || !state.tenue_haut) return;
+  const map = state.genre === 'homme' ? A.tenue_haut_h : A.tenue_haut_f;
+  const url = map[state.tenue_haut];
+  if (!url) return;
+  drawImageC(url, 0, 0, CANVAS_W, CANVAS_H);
+}
+
+function drawTenueBas() {
+  if (!state.genre || !state.tenue_bas) return;
+  const map = state.genre === 'homme' ? A.tenue_bas_h : A.tenue_bas_f;
+  const url = map[state.tenue_bas];
+  if (!url) return;
+  drawImageC(url, 0, 0, CANVAS_W, CANVAS_H);
+}
+
+function drawShoes() {
+  if (!state.genre || !state.shoes) return;
+  const map = state.genre === 'homme' ? A.shoes_h : A.shoes_f;
+  const url = map[state.shoes];
+  if (!url) return;
+  drawImageC(url, 0, 0, CANVAS_W, CANVAS_H);
+}
+
+function drawAccTete() {
+  if (!state.acc_tete || state.acc_tete.size === 0) return;
+  state.acc_tete.forEach(key => {
+    const url = A.acc_tete[key];
+    if (url) drawImageC(url, 0, 0, CANVAS_W, CANVAS_H);
+  });
+}
+
+function drawAccCorps() {
+  if (!state.acc_corps || state.acc_corps.size === 0) return;
+  state.acc_corps.forEach(key => {
+    const url = A.acc_corps[key];
+    if (url) drawImageC(url, 0, 0, CANVAS_W, CANVAS_H);
+  });
+}
+
+function drawDossard() {
+  if (!state.showDossard) return;
+  const url = A.dossard;
+  if (!url) return;
+  // dessin sans clearRect destructeur
+  drawImageC(url, 0, 0, CANVAS_W, CANVAS_H);
+}
+
+/* ===== RENDER ENGINE ===== */
+
+function _renderFrame() {
+  if (!canvas || !ctx) return;
+  ctx.save();
+  drawBackground();
+  if (!state.genre) {
+    ctx.restore();
+    return; // canvas noir, rien d'autre
+  }
+  drawCorps();
+  drawTenueBas();
+  drawShoes();
+  drawTenueHaut();
+  drawYeux();
+  drawCheveux();
+  drawBarbe();
+  drawAccTete();
+  drawAccCorps();
+  drawDossard();
+  ctx.restore();
+}
+
+/* ===== INIT CANVAS ===== */
+
+function initAvatar(canvasId) {
+  canvas = document.getElementById(canvasId);
+  if (!canvas) {
+    console.error('Canvas introuvable :', canvasId);
+    return;
+  }
+  canvas.width = CANVAS_W;
+  canvas.height = CANVAS_H;
+  ctx = canvas.getContext('2d');
+  _renderFrame();
+}
+
+/* ===== STATE UPDATES ===== */
+
+function updateState(changes) {
+  Object.assign(state, changes);
+  _renderFrame();
+}
+
+function toggleAccTete(key) {
+  if (state.acc_tete.has(key)) state.acc_tete.delete(key);
+  else state.acc_tete.add(key);
+  _renderFrame();
+}
+
+function toggleAccCorps(key) {
+  if (state.acc_corps.has(key)) state.acc_corps.delete(key);
+  else state.acc_corps.add(key);
+  _renderFrame();
+}
+
+function toggleDossard() {
+  state.showDossard = !state.showDossard;
+  _renderFrame();
+}
+
+function resetAvatar() {
+  state = {
+    prenom: '',
+    programme: 'athletic',
+    genre: null, morpho: null, carnation: null, yeux: null,
+    cheveux_style: null, cheveux_couleur: null, barbe: null,
+    tenue_haut: null, tenue_bas: null, shoes: null,
+    acc_tete: new Set(), acc_corps: new Set(),
+    showDossard: false,
+  };
+  _renderFrame();
+}
+
+/* ===== GET AVATAR DATA URL ===== */
+
+function getAvatarDataURL(format = 'image/png', quality = 1.0) {
+  if (!canvas) return null;
+  return canvas.toDataURL(format, quality);
+}
+
+/* ===== EXPORT ===== */
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    A, MORPHO_SCALE, PROGRAMMES, state,
+    CANVAS_W, CANVAS_H, imageCache,
+    getAllPaths, preloadImages,
+    initAvatar, _renderFrame, updateState,
+    toggleAccTete, toggleAccCorps, toggleDossard, resetAvatar,
+    getAvatarDataURL,
+  };
+}
