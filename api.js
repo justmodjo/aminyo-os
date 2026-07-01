@@ -169,6 +169,16 @@ app.get('/api/leads', requireSupabase, async (req, res) => {
     if (status) opts.eq = { status };
     if (source) opts.eq = { ...opts.eq, source };
     const { data } = await safeQuery('leads', opts);
+    // Ajouter les liens reseaux sociaux directement dans chaque lead
+    if (data) {
+      data.forEach(l => {
+        l.social_links = {
+          facebook: l.facebook_url || null,
+          instagram: l.instagram_url || null,
+          website: l.website_url || null
+        };
+      });
+    }
     res.json(data);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -307,6 +317,35 @@ app.get('/api/ai-actions', requireSupabase, async (req, res) => {
     const { limit } = req.query;
     const { data } = await safeQuery('ai_actions', { order: { field: 'created_at', asc: false }, limit: parseInt(limit) || 50 });
     res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Leads : reseaux sociaux ────────────────────────────────
+app.get('/api/leads/reseaux', requireSupabase, async (req, res) => {
+  try {
+    const { limit, minScore } = req.query;
+    const opts = {
+      order: { field: 'score_enrichi', asc: false },
+      limit: parseInt(limit) || 100
+    };
+    const { data } = await safeQuery('leads', opts);
+    if (!data) return res.json([]);
+
+    const enriched = data
+      .filter(l => l.facebook_url || l.instagram_url || l.website_url)
+      .map(l => ({
+        id: l.id,
+        company: l.company,
+        phone: l.phone,
+        email: l.email,
+        score_enrichi: l.score_enrichi || 0,
+        liens: {
+          facebook: l.facebook_url || null,
+          instagram: l.instagram_url || null,
+          site_web: l.website_url || null
+        }
+      }));
+    res.json(enriched);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
