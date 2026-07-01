@@ -1019,7 +1019,7 @@ const RECHERCHES_PROSPECTION = [
   // ── Sport & Bien-être (2 Normandie + 1 IDF) ──
   { search: 'coach sportif Le Havre',        secteur: 'sport-bienetre' },
   { search: 'salle de sport Le Havre',       secteur: 'sport-bienetre' },
-  { search: 'coach sportif Val-d'Oise 95',  secteur: 'sport-bienetre' },
+  { search: 'coach sportif Val-d\'Oise 95',  secteur: 'sport-bienetre' },
   // ── Beauté (1) ──
   { search: 'salon coiffure Le Havre',       secteur: 'beaute' },
   // ── Restauration (1) ──
