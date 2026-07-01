@@ -129,13 +129,17 @@ app.post('/api/leads', requireSupabase, async (req, res) => {
       phone: phone || '',
       company: company || '',
       project_type: project_type || '',
-      message: message || '',
       source: source || 'site',
       status: 'nouveau',
       pipeline_stage: 'nouveau',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
+
+    // Ajouter message seulement si présent (colonne Supabase peut manquer)
+    if (message) lead.message = message;
+    if (req.body.urgence) lead.urgence = req.body.urgence;
+    if (req.body.budget_range) lead.budget_range = req.body.budget_range;
 
     // Vérifier doublon
     const { data: existing } = await supabase.from('leads').select('id,email,status').eq('email', email).limit(1);
@@ -144,7 +148,15 @@ app.post('/api/leads', requireSupabase, async (req, res) => {
     }
 
     const { data, error } = await supabase.from('leads').insert(lead).select();
-    if (error) throw error;
+    if (error) {
+      // Si erreur colonne, réessayer sans message et autres champs optionnels
+      delete lead.message;
+      delete lead.urgence;
+      delete lead.budget_range;
+      const { data: d2, error: e2 } = await supabase.from('leads').insert(lead).select();
+      if (e2) throw e2;
+      return res.status(201).json({ success: true, lead: d2?.[0], note: 'Colonnes optionnelles ignorees' });
+    }
 
     res.status(201).json({ success: true, lead: data?.[0] });
   } catch (err) { res.status(500).json({ error: err.message }); }
