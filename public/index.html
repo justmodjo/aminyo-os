@@ -608,6 +608,7 @@ th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
             <th class="sortable" data-sort="name">Nom<span class="sort-arrow"></span></th>
             <th>Email</th>
             <th>Société</th>
+            <th>🔗 Réseaux</th>
             <th>Source</th>
             <th class="sortable" data-sort="score">Score<span class="sort-arrow"></span></th>
             <th class="sortable" data-sort="status">Statut<span class="sort-arrow"></span></th>
@@ -875,10 +876,21 @@ th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
         Array.from(sources).sort().map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
     }
 
+    function socialIcons(l) {
+      const fb = (l.facebook_url || l.social_links?.facebook || '');
+      const ig = (l.instagram_url || l.social_links?.instagram || '');
+      const site = (l.website_url || l.social_links?.site_web || '');
+      let icons = '';
+      if (fb) icons += '<a href="' + fb + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="text-decoration:none;font-size:18px;" title="Facebook">👍</a>';
+      if (ig) icons += '<a href="' + ig + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="text-decoration:none;font-size:18px;margin-left:4px;" title="Instagram">📸</a>';
+      if (site) icons += '<a href="' + site + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="text-decoration:none;font-size:14px;margin-left:4px;" title="Site web">🌐</a>';
+      return icons || '<span style="color:var(--dim);font-size:12px;">—</span>';
+    }
+
     function renderLeadsTable(leads) {
       const body = document.getElementById('leads-table');
       if (!leads.length) {
-        body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:30px;">Aucun lead</td></tr>';
+        body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--dim);padding:30px;">Aucun lead</td></tr>';
         return;
       }
       body.innerHTML = leads.map(l => `
@@ -887,6 +899,7 @@ th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
           <td><strong>${escapeHtml(l.first_name || l.company || '')} ${escapeHtml(l.last_name || '')}</strong></td>
           <td>${escapeHtml(l.email || '—')}</td>
           <td>${escapeHtml(l.company || '—')}</td>
+          <td>${socialIcons(l)}</td>
           <td>${escapeHtml(l.source || '—')}</td>
           <td>${scoreLabel(l.ai_score)}</td>
           <td>${statusBadge(l.status || 'nouveau')}${(l.pipeline_stage || '').startsWith('Cycle ') ? '<span class="badge-cycle">' + escapeHtml(l.pipeline_stage) + '</span>' : ''}</td>
@@ -1001,6 +1014,15 @@ th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
         <div class="field">
           <div class="field-label">Source</div>
           <div class="field-value">${escapeHtml(lead.source || '—')}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">🔗 Réseaux sociaux</div>
+          <div class="field-value" style="font-size:16px;">
+            ${lead.facebook_url || lead.social_links?.facebook ? '<a href="' + (lead.facebook_url || lead.social_links?.facebook) + '" target="_blank" rel="noopener" style="text-decoration:none;margin-right:12px;">👍 Facebook</a>' : ''}
+            ${lead.instagram_url || lead.social_links?.instagram ? '<a href="' + (lead.instagram_url || lead.social_links?.instagram) + '" target="_blank" rel="noopener" style="text-decoration:none;margin-right:12px;">📸 Instagram</a>' : ''}
+            ${lead.website_url || lead.social_links?.site_web ? '<a href="' + (lead.website_url || lead.social_links?.site_web) + '" target="_blank" rel="noopener" style="text-decoration:none;margin-right:12px;">🌐 Site web</a>' : ''}
+            ${!lead.facebook_url && !lead.instagram_url && !lead.website_url && !lead.social_links?.facebook && !lead.social_links?.instagram && !lead.social_links?.site_web ? '<span style="color:var(--dim)">Aucun réseau renseigné</span>' : ''}
+          </div>
         </div>
         <div class="field">
           <div class="field-label">Score IA</div>
