@@ -6,6 +6,9 @@
   <title>Aminyo OS — Dashboard</title>
   <meta name="theme-color" content="#7C3AED">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -531,6 +534,16 @@ th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
   .card { padding: 14px 12px; }
 }
   </style>
+<script>
+    // Cache-buster: force reload si version differente
+    const APP_VER = 'mr215ua3';
+    const stored = localStorage.getItem('aminyo_ver');
+    if (stored && stored !== APP_VER) {
+      localStorage.setItem('aminyo_ver', APP_VER);
+      window.location.reload(true);
+    }
+    localStorage.setItem('aminyo_ver', APP_VER);
+  </script>
 </head>
 <body>
   <div class="container">
@@ -979,6 +992,10 @@ th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
         const res = await fetch('/api/leads?limit=200');
         if (!res.ok) throw new Error('HTTP ' + res.status);
         leadsCache = toArray(await res.json());
+        // Debug: compter les leads avec reseaux
+        const withSocial = leadsCache.filter(l => l.facebook_url || l.instagram_url || l.website_url);
+        console.log('[Leads] ' + leadsCache.length + ' leads, ' + withSocial.length + ' avec reseaux sociaux');
+        if (withSocial.length > 0) console.log('[Leads] Exemple:', withSocial[0].company, 'FB:', withSocial[0].facebook_url, 'IG:', withSocial[0].instagram_url);
         populateSourceFilter();
         // Appliquer tri par défaut : date desc
         leadsSort = { key: 'date', dir: 'desc' };
