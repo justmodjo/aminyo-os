@@ -107,11 +107,46 @@ app.get('/api/stats', requireSupabase, async (req, res) => {
 // ── Leads ──────────────────────────────────────────────────
 app.get('/api/leads', requireSupabase, async (req, res) => {
   try {
-    const { status, limit } = req.query;
+    const { status, limit, source } = req.query;
     const opts = { order: { field: 'created_at', asc: false }, limit: parseInt(limit) || 50 };
     if (status) opts.eq = { status };
+    if (source) opts.eq = { ...opts.eq, source };
     const { data } = await safeQuery('leads', opts);
     res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/leads — Créer un lead (formulaires site, Google Form, API tierce)
+app.post('/api/leads', requireSupabase, async (req, res) => {
+  try {
+    const { first_name, last_name, email, phone, company, project_type, message, source } = req.body;
+    if (!email) return res.status(400).json({ error: 'email requis' });
+
+    const lead = {
+      first_name: first_name || '',
+      last_name: last_name || '',
+      email,
+      phone: phone || '',
+      company: company || '',
+      project_type: project_type || '',
+      message: message || '',
+      source: source || 'site',
+      status: 'nouveau',
+      pipeline_stage: 'nouveau',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    // Vérifier doublon
+    const { data: existing } = await supabase.from('leads').select('id,email,status').eq('email', email).limit(1);
+    if (existing && existing.length > 0) {
+      return res.json({ duplicate: true, existing: existing[0], message: 'Lead déjà existant' });
+    }
+
+    const { data, error } = await supabase.from('leads').insert(lead).select();
+    if (error) throw error;
+
+    res.status(201).json({ success: true, lead: data?.[0] });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
