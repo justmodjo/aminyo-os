@@ -1008,20 +1008,24 @@ function sauvegarderEtat(stats) {
  * 8 recherches réparties en 2 secteurs, 24 cibles total (~3 par recherche).
  */
 const RECHERCHES_PROSPECTION = [
-  // ── Artisans BTP (3 recherches : plombier + électricien Le Havre, menuisier Rouen) ──
-  // ── Artisans BTP (3 recherches : préciser France pour éviter USA) ──
+  // ── Artisans BTP Normandie (3) ──
   { search: 'plombier Le Havre France',     secteur: 'artisans' },
   { search: 'électricien Le Havre France',  secteur: 'artisans' },
   { search: 'menuisier Rouen',              secteur: 'artisans' },
-  // ── Sport & Bien-être (2 recherches) ──
-  { search: 'coach sportif Le Havre',    secteur: 'sport-bienetre' },
-  { search: 'salle de sport Le Havre',   secteur: 'sport-bienetre' },
-  // ── Beauté (1 recherche) ──
-  { search: 'salon coiffure Le Havre',   secteur: 'beaute' },
-  // ── Restauration (1 recherche, France) ──
-  { search: 'restaurant Le Havre France',   secteur: 'restauration' },
-  // ── Libre (1 recherche) ──
-  { search: 'artisan Normandie',            secteur: 'artisans' },
+  // ── Artisans BTP IDF (3 nouvelles) ──
+  { search: 'plombier Hauts-de-Seine 92',    secteur: 'artisans' },
+  { search: 'électricien Val-de-Marne 94',   secteur: 'artisans' },
+  { search: 'artisan Seine-et-Marne 77',     secteur: 'artisans' },
+  // ── Sport & Bien-être (2 Normandie + 1 IDF) ──
+  { search: 'coach sportif Le Havre',        secteur: 'sport-bienetre' },
+  { search: 'salle de sport Le Havre',       secteur: 'sport-bienetre' },
+  { search: 'coach sportif Val-d'Oise 95',  secteur: 'sport-bienetre' },
+  // ── Beauté (1) ──
+  { search: 'salon coiffure Le Havre',       secteur: 'beaute' },
+  // ── Restauration (1) ──
+  { search: 'restaurant Le Havre France',    secteur: 'restauration' },
+  // ── Libre (1) ──
+  { search: 'artisan Normandie',             secteur: 'artisans' },
 ];
 
 /**
