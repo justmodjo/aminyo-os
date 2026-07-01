@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Aminyo OS — Dashboard</title>
+  <title>Aminyo OS — Dashboard vmr216ako</title>
   <meta name="theme-color" content="#7C3AED">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -590,7 +590,7 @@ th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
       <div class="tab-panel" id="panel-leads">
         <div class="section">
           <h2>📥 Tous les leads</h2>
-          <div class="filters-bar" id="leads-filters">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><button onclick="loadLeads(true)" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;">🔄 Forcer refresh</button></div><div class="filters-bar" id="leads-filters">
             <select class="filter-select" id="filter-status">
               <option value="">Tous les statuts</option>
               <option value="à_qualifier">À qualifier</option>
@@ -987,9 +987,22 @@ th.sortable.sorted.desc .sort-arrow::before { content: '▼'; }
       });
     }
 
-    async function loadLeads() {
+    async function loadLeads(forceRefresh) {
+      if (forceRefresh) {
+        // Forcer un rechargement depuis le reseau, pas le cache
+        const url = '/api/leads?limit=200&_=' + Date.now();
+        return fetch(url).then(r => r.json()).then(data => {
+          leadsCache = toArray(data);
+          populateSourceFilter();
+          leadsSort = { key: 'date', dir: 'desc' };
+          applyLeadsFiltersAndSort();
+        }).catch(err => {
+          document.getElementById('leads-table').innerHTML =
+            '<tr><td colspan="8" style="text-align:center;color:var(--red);padding:30px;">Erreur : ' + escapeHtml(err.message) + '</td></tr>';
+        });
+      }
       try {
-        const res = await fetch('/api/leads?limit=200');
+        const res = await fetch('/api/leads?limit=200&_=' + Date.now());
         if (!res.ok) throw new Error('HTTP ' + res.status);
         leadsCache = toArray(await res.json());
         // Debug: compter les leads avec reseaux
